@@ -1,2 +1,3 @@
 /* en: app name */
 "CFBundleDisplayName" = "NFA Choices";
+"NSPhotoLibraryAddUsageDescription" = "Lets you save the pictures you share from the game to your photos.";

@@ -347,6 +347,7 @@
   <div class="home-top">
     <span class="chip"><span class="coin-icon" aria-hidden="true"></span><span id="home-coins">0</span></span>
     <div class="home-btns">
+      <button class="icon-btn" id="btn-lb" type="button" aria-label="Leaderboard" data-i18n-label="lb.open"><span style="font-size:21px;line-height:1">🥇</span></button>
       <button class="icon-btn" id="btn-wheel" type="button" aria-label="Lucky wheel" data-i18n-label="wheel.title"><span style="font-size:22px;line-height:1">🎡</span><span class="badge" id="wheel-badge" hidden>1</span></button>
       <button class="icon-btn" id="btn-shop" type="button" aria-label="Shop" data-i18n-label="shop"><svg viewBox="0 0 24 24"><path d="M6 7V6a6 6 0 0 1 12 0v1h3l-1.5 14h-15L3 7zm2 0h8V6a4 4 0 0 0-8 0z"/></svg><span class="badge" id="shop-badge" hidden>!</span></button>
       <button class="icon-btn" id="btn-settings" type="button" aria-label="Settings" data-i18n-label="settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.5 7.5 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.5 7.5 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.5 7.5 0 0 0 1.7 1L11 21h4l.4-2.7a7.5 7.5 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5A3.5 3.5 0 1 1 13 8.5a3.5 3.5 0 0 1 0 7z"/></svg></button>
@@ -386,7 +387,7 @@
     <div class="won-coins"><span class="coin-icon" aria-hidden="true"></span><span id="won-coins">+10</span></div>
     <p id="won-streak" class="score-line" hidden></p>
     <button class="btn btn-big btn-green" id="btn-next" type="button" data-i18n="next">Next level</button>
-    <button class="btn btn-plain" id="btn-won-home" type="button" data-i18n="homepage">Home</button>
+    <div class="row-btns"><button class="btn btn-plain btn-sm" id="btn-won-home" type="button" data-i18n="homepage">Home</button><button class="btn btn-sm" id="btn-share-won" type="button"><span>📤 </span><span data-i18n="sh.btn">Share</span></button></div>
   </div>
 </section>
 
@@ -399,7 +400,8 @@
     <p id="lost-tip" class="tip-line" data-i18n="tip.hint" hidden></p>
     <button class="btn btn-gold" id="btn-revive" type="button"><span data-i18n="revive">Watch an ad, try this part again</span></button>
     <button class="btn btn-big btn-green" id="btn-retry" type="button" data-i18n="retry">Try again</button>
-    <button class="btn btn-plain" id="btn-lost-home" type="button" data-i18n="home">Home</button>
+    <div class="row-btns"><button class="btn btn-plain btn-sm" id="btn-lost-home" type="button" data-i18n="home">Home</button><button class="btn btn-sm" id="btn-share-lost" type="button"><span>📤 </span><span data-i18n="sh.btn">Share</span></button></div>
+    <button class="btn btn-plain btn-sm" id="btn-lb-lost" type="button" hidden><span>🏆 </span><span data-i18n="lb.title">Leaderboard</span></button>
   </div>
 </section>
 
@@ -438,6 +440,7 @@
     <div class="set-row"><span data-i18n="set.music">Music</span><button class="toggle" id="tg-music" type="button" role="switch" aria-checked="true" aria-label="Music"></button></div>
     <div class="set-row"><span data-i18n="set.vibe">Vibration</span><button class="toggle" id="tg-vibe" type="button" role="switch" aria-checked="true" aria-label="Vibration"></button></div>
     <div class="set-row"><span data-i18n="set.notify">Reminders</span><button class="toggle" id="tg-notify" type="button" role="switch" aria-checked="true" aria-label="Reminders"></button></div>
+    <div class="set-row"><span data-i18n="cr.title">Nimoriq gifts</span><button class="lang-btn" id="btn-gifts" type="button">🎁</button></div>
     <div class="set-row" id="row-adprivacy" hidden><span data-i18n="set.adprivacy">Ad privacy</span><button class="lang-btn" id="btn-adprivacy" type="button" data-i18n="acc.open">Open</button></div>
     <div class="set-row"><span><span data-i18n="acc.section">Account</span><small id="account-state" class="acc-state"></small></span><button class="lang-btn" id="btn-account" type="button" data-i18n="acc.open">Open</button></div>
     <div class="set-row"><span data-i18n="set.lang">Language</span><button class="lang-btn" id="btn-lang" type="button">Türkçe</button></div>

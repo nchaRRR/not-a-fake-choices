@@ -9,7 +9,9 @@ import { createAdMob } from './admob.js';
 const UNITS = { android: 'ca-app-pub-3940256099942544/5224354917', ios: 'ca-app-pub-3940256099942544/1712485313' };
 // true: Google's test ads. Keep it on while we test on our own phones; false for the store release.
 export const ADS_TESTING = true;
-const admob = createAdMob(UNITS, { testing: ADS_TESTING, onPlaying: (on) => adPause(on) });
+// Interstitial (between levels) units: Google's TEST units until Choices has its own in AdMob.
+const INTERSTITIAL = { android: 'ca-app-pub-3940256099942544/1033173712', ios: 'ca-app-pub-3940256099942544/4411468910' };
+const admob = createAdMob(UNITS, { testing: ADS_TESTING, onPlaying: (on) => adPause(on), interstitial: INTERSTITIAL });
 if (admob) admob.init();
 export const adPrivacy = admob;
 

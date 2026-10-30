@@ -17,8 +17,15 @@ import { sfx, unlockAudio, setMuted } from './audio.js';
 import { startMusic, setMusicEnabled, setSong } from './music.js';
 import { track } from './analytics.js';
 import { startTelemetry } from './telemetry.js';
+import { createRemote } from './remote.js';
+import { createReview } from './review.js';
+import { makeCard, shareCanvas, svgToImage } from './share.js';
+import { createLeaderboard } from './leaderboard.js';
+import { createCrossRewards } from './crossreward.js';
+import { createInterstitials } from './interstitial.js';
 import { t, getLang, setLang, applyStatic, sayWord, nextLang, LANG_NAMES } from './i18n.js';
 
+const CLOUD = typeof __CLOUD__ !== 'undefined' && __CLOUD__;
 // anonymous play statistics (phone app only)
 startTelemetry({ game: 'choices', version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev', enabled: typeof __CLOUD__ !== 'undefined' && __CLOUD__, lang: () => document.documentElement.lang });
 
@@ -44,7 +51,9 @@ const buzz = (ms) => { if (save.vibe && navigator.vibrate) try { navigator.vibra
 // Weekly event: changes every Monday, cycles through four twists.
 const EVENTS = ['gold', 'speed', 'freehint', 'album'];
 let eventId = EVENTS[Math.floor((Date.now() / 864e5 + 3) / 7) % EVENTS.length];
-const coinMult = () => (eventId === 'gold' ? 2 : eventId === 'speed' ? 1.5 : 1);
+const remote = createRemote('choices', { enabled: CLOUD, defaults: { coin_mult: 1, time_mult: 1 } });
+remote.refresh();
+const coinMult = () => (eventId === 'gold' ? 2 : eventId === 'speed' ? 1.5 : 1) * remote.num('coin_mult', 1, 0.2, 5);
 const timeMult = () => (eventId === 'speed' ? 0.8 : 1);
 const HINT_PACK = 100;
 
@@ -377,7 +386,7 @@ function buildStage(quiet = false) {
   stageT = 0;
   ambT = 0.4;
   if (!quiet) { const st = $('stage'); st.classList.remove('enter'); void st.getBoundingClientRect(); st.classList.add('enter'); }
-  stage.time = stage.baseTime ? stage.baseTime * timeMult() : (stage.baseTime = stage.time) * timeMult();
+  stage.time = (stage.baseTime ? stage.baseTime : (stage.baseTime = stage.time)) * timeMult() * remote.num('time_mult', 1, 0.5, 2);
   state = 'choose';
   levelChip();
   // choices
@@ -580,6 +589,8 @@ async function lost(type, fresh = false, tool = '') {
     return;
   }
   $('lost-line').textContent = (tool && joke(stage.hazard, tool, getLang())) || t('fail.' + type);
+  lastShare = { kind: 'fail', title: $('lost-line').textContent, line: level.mode === 'endless' ? t('endless.score', { n: level.score, b: save.endlessBest }) : t('sh.dare') };
+  $('btn-lb-lost').hidden = level.mode !== 'endless';
   $('btn-revive').hidden = level.n === 0 || run.revived;
   $('lost-new').hidden = !fresh;
   const tip = !save.tipHint && level.mode === 'level' && level.n > 0;
@@ -595,6 +606,7 @@ async function lost(type, fresh = false, tool = '') {
     level.paid = level.score;
     writeSave();
     sc.textContent = (best ? t('endless.best') + ' ' : '') + t('endless.score', { n: level.score, b: save.endlessBest });
+    leaderboard.submit('endless', level.score);
     track('endless_end', { score: level.score });
   }
   updateCoins();
@@ -641,7 +653,12 @@ async function won() {
   track('level_win', { level: level.n });
   account.onRunEnd();
   if (level.mode === 'level' && level.n === 3 && !save.notifAsked) { save.notifAsked = 1; writeSave(); setTimeout(() => askNotificationPermission(), 1500); }
-  setTimeout(() => { if (state === 'won' && my === gen) account.maybeAsk(); }, 2400);
+  if (level.mode === 'level' && level.n > 0) leaderboard.submit('level', save.level - 1);
+  setTimeout(() => {
+    if (state !== 'won' || my !== gen) return;
+    if (!account.maybeAsk() && level.mode === 'level' && level.n > 0) review.onWin(stars === 3 || level.boss ? 'big' : 'win');
+  }, 2400);
+  lastShare = { kind: 'win', title: level.mode === 'daily' ? t('daily.won') : t('sh.win', { n: level.n }), line: t('sh.dare') };
   await wait(0.3);
   if (my !== gen) return;
   const daily = level.mode === 'daily';
@@ -725,6 +742,7 @@ function goHome() {
   $('shop-badge').hidden = !OUTFITS.some((o) => !save.owned.includes(o.id) && o.price <= save.coins);
   $('event-chip').textContent = t('event.' + eventId);
   $('wheel-badge').hidden = !wheelState().free;
+  showNotice();
   $('dailych-badge').hidden = save.dailyCh === dayKey(new Date()) || !save.seenIntro;
   $('btn-dailych').classList.toggle('done', save.dailyCh === dayKey(new Date()));
   $('ach-badge').hidden = !ACH.some((a) => !save.ach[a.id] && achValue(a) >= a.goal);
@@ -1050,7 +1068,8 @@ function renderSettings() {
 const on = (id, fn) => $(id).addEventListener('click', (e) => { e.stopPropagation(); unlockAudio(); fn(); });
 on('btn-play', () => { sfx.tap(); if (!save.seenIntro && save.level <= 1) startIntro(); else startLevel(save.level); });
 on('btn-intro-go', () => { sfx.tap(); save.seenIntro = 1; writeSave(); startLevel(0); });
-const afterWin = (home) => {
+const afterWin = async (home) => {
+  if (level.mode === 'level' && level.n > 0) await inter.afterLevel(level.n);
   if (home || level.mode === 'daily') return goHome();
   if (level.mode === 'bonus') return startLevel(level.next);
   if (level.mode === 'level' && level.n > 0 && level.n % 7 === 0 && !level.boss) return startLevel(-3, bonusSpec(level.n));
@@ -1144,6 +1163,53 @@ function useHint() {
 }
 on('btn-lang', () => { setLang(nextLang()); sfx.tap(); renderSettings(); });
 on('btn-settings', () => { sfx.tap(); renderSettings(); showScreen('screen-settings'); });
+// ---------------------------------------------------------------- leaderboard, review, gifts, share, ads between levels
+const leaderboard = createLeaderboard({
+  game: 'choices', enabled: CLOUD, t, sfx, track,
+  boards: [{ id: 'endless', label: () => t('tile.endless') }, { id: 'level', label: () => t('lb.board.level') }],
+});
+const review = createReview({ game: 'choices', save, writeSave, t, track, remote, gameName: 'Not a Fake Ad: Choices', canShow: () => state === 'won' && $('screen-account').hidden });
+const inter = createInterstitials({ admob: adPrivacy, remote, skip: () => (save.iap || []).includes('no_ads'), track });
+const cross = createCrossRewards({
+  save, writeSave, t, sfx, track,
+  levels: () => account.otherLevels(),
+  icons: { tower: promoTower, nfa: promoNfa },
+  names: { tower: 'Not a Fake Ad: Tower', nfa: 'Not a Fake Ad' },
+  onSignIn: () => account.open('settings'),
+  rewards: [
+    { id: 'tower10', from: 'tower', level: 10, gift: () => t('cr.coinsHints', { n: 500, h: 3 }), grant: () => { save.coins += 500; save.hints += 3; updateCoins(); updateHints(); } },
+    { id: 'nfa10', from: 'nfa', level: 10, gift: () => t('cr.coinsHints', { n: 500, h: 3 }), grant: () => { save.coins += 500; save.hints += 3; updateCoins(); updateHints(); } },
+    { id: 'tower30', from: 'tower', level: 30, gift: () => t('outfit.astro'), grant: () => { if (!save.owned.includes('astro')) save.owned.push('astro'); } },
+    { id: 'nfa30', from: 'nfa', level: 30, gift: () => t('pet.parrot'), grant: () => { if (!save.pets.includes('parrot')) save.pets.push('parrot'); } },
+  ],
+});
+// check once a session (signed-in players only) and point at the gift
+setTimeout(async () => { await cross.refresh(); if (cross.count() && state === 'home') toast(t('cr.new'), 'good'); }, 6000);
+
+let lastShare = null;
+async function shareMoment() {
+  if (!lastShare) return;
+  sfx.tap();
+  const shot = await svgToImage($('stage'), 800, 1040);
+  const card = makeCard({ shot, title: lastShare.title, line: lastShare.line, logo: 'Not a Fake Ad: Choices', sub: t('sh.cta'), cta: '', colors: { top: '#ffd34d', bottom: '#ff8a2e' } });
+  const how = await shareCanvas(card, { title: 'Not a Fake Ad: Choices', text: `${t('sh.text', { game: 'Not a Fake Ad: Choices' })} ${storeLink('choices')}`, file: 'nfa-choices.png' });
+  track('share', { kind: lastShare.kind, how });
+}
+function showNotice() {
+  const id = remote.get('notice_id', '');
+  const n = remote.get('notice', null);
+  if (!id || !n || save.noticeSeen === id) return;
+  const text = typeof n === 'string' ? n : n[getLang()] || n.en;
+  if (!text) return;
+  save.noticeSeen = id; writeSave();
+  setTimeout(() => toast(String(text).slice(0, 160), 'good'), 800);
+}
+on('btn-share-won', () => shareMoment());
+on('btn-share-lost', () => shareMoment());
+on('btn-lb', () => { sfx.tap(); leaderboard.open('endless'); });
+on('btn-lb-lost', () => { sfx.tap(); leaderboard.open('endless'); });
+on('btn-gifts', () => { sfx.tap(); showScreen(null); $('screen-settings').hidden = true; cross.open().then(() => {}); });
+
 on('btn-account', () => { sfx.tap(); $('screen-settings').hidden = true; account.open('settings'); });
 on('btn-settings-close', () => { sfx.tap(); goHome(); });
 on('tg-sound', () => { save.muted = !save.muted; setMuted(save.muted); writeSave(); renderSettings(); sfx.tap(); });
@@ -1320,6 +1386,10 @@ window.__choices = {
   get level() { return level; },
   get stage() { return stage; },
   get save() { return save; },
+  review: () => review.show(),
+  share: () => shareMoment(),
+  cross: () => cross.open(),
+  lb: (b) => leaderboard.open(b),
   bonus: (n) => startLevel(-3, bonusSpec(n)),
   guess: (y) => guess(y),
   setEvent: (e) => { eventId = e; updateHints(); },
