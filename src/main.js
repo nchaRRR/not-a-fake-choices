@@ -14,7 +14,7 @@ import { t, getLang, setLang, applyStatic, sayWord } from './i18n.js';
 const $ = (id) => document.getElementById(id);
 const SAVE_KEY = 'nfa-choices-v1';
 const save = (() => {
-  const base = { level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0, pet: 'none', pets: ['none'], chests: {}, vibe: true, streak: 0 };
+  const base = { level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0, pet: 'none', pets: ['none'], chests: {}, vibe: true, streak: 0, st: { saves: 0, fails: 0, bestStreak: 0, levels: 0, failBy: {} } };
   try { return { ...base, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; } catch (e) { return base; }
 })();
 const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* session only */ } };
@@ -377,6 +377,7 @@ function buildStage(quiet = false) {
   });
   $('timer').classList.remove('low');
   twistDone = false;
+  $('btn-time').classList.remove('used');
   if (stage.twist === 'mystery' && !quiet) {
     const cards = [...box.children];
     const b = cards[(level.n * 3 + stageIdx * 5 + (level.score || 0)) % cards.length];
@@ -442,6 +443,7 @@ async function pick(id, btn) {
   flying.remove();
   if (my !== gen) return;
   if (id === hz.correct) {
+    save.st.saves++;
     run.fracs.push(Math.max(0, 1 - stageT / stage.time));
     await hz.win(ctx);
     if (my !== gen) return;
@@ -465,6 +467,9 @@ async function pick(id, btn) {
     const key = stage.hazard + ':' + id;
     const fresh = !introAd && !save.album[key] && ENDINGS.some((e) => e.key === key);
     if (fresh) { save.album[key] = 1; save.coins += albumCoins(); writeSave(); }
+    save.st.fails++;
+    save.st.failBy[stage.hazard] = (save.st.failBy[stage.hazard] || 0) + 1;
+    writeSave();
     buzz(60);
     await hz.fails[type].call(hz, ctx);
     if (my !== gen) return;
@@ -571,14 +576,15 @@ async function won() {
   const my = gen;
   const avg = run.fracs.reduce((a, b) => a + b, 0) / Math.max(1, run.fracs.length);
   let stars = avg >= 0.5 ? 3 : avg >= 0.25 ? 2 : 1;
-  if (run.hint) stars = Math.min(stars, 2);
+  if (run.hint || run.joker) stars = Math.min(stars, 2);
   if (run.revived) stars = 1;
   const today = dayKey(new Date());
   const dailyFirst = level.mode === 'daily' && save.dailyCh !== today;
   let reward = Math.round((level.mode === 'daily' ? (dailyFirst ? 100 : 0) : level.n === 0 ? 20 : 10 + Math.floor(level.n * 1.5) + stars * 5) * (level.n === 0 ? 1 : coinMult()));
   if (level.boss) reward *= 2;
   let streakPct = 0;
-  if (level.mode === 'level' && level.n > 0) { save.streak = (save.streak || 0) + 1; streakPct = Math.min(50, (save.streak - 1) * 10); }
+  if (level.mode === 'level' && level.n > 0) save.st.levels++;
+  if (level.mode === 'level' && level.n > 0) { save.streak = (save.streak || 0) + 1; save.st.bestStreak = Math.max(save.st.bestStreak, save.streak); streakPct = Math.min(50, (save.streak - 1) * 10); }
   const bonus = Math.round(reward * streakPct / 100);
   pendingChest = level.n > 0 && level.n % 10 === 0 && !save.chests[level.n] ? level.n : 0;
   if (dailyFirst) { save.dailyCh = today; save.dailyCount++; save.hints++; }
@@ -645,7 +651,7 @@ function levelChip() {
   if (level.stages.length > 1 && level.mode !== 'endless') txt += ' · ' + t('stage', { a: stageIdx + 1, b: level.stages.length });
   $('hud-level').textContent = txt;
 }
-const screens = ['screen-chest', 'screen-album', 'screen-ach', 'screen-home', 'screen-won', 'screen-lost', 'screen-intro', 'screen-shop', 'screen-hintbuy', 'screen-settings', 'screen-daily'];
+const screens = ['screen-wheel', 'screen-chest', 'screen-album', 'screen-ach', 'screen-home', 'screen-won', 'screen-lost', 'screen-intro', 'screen-shop', 'screen-hintbuy', 'screen-settings', 'screen-daily'];
 function showScreen(id) { for (const s of screens) $(s).hidden = s !== id; }
 function updateCoins() { $('hud-coins').textContent = save.coins; $('home-coins').textContent = save.coins; }
 function updateHints() { $('hint-count').textContent = eventId === 'freehint' ? '∞' : save.hints > 0 ? save.hints : '+'; }
@@ -670,6 +676,7 @@ function goHome() {
   renderMap();
   $('shop-badge').hidden = !OUTFITS.some((o) => !save.owned.includes(o.id) && o.price <= save.coins);
   $('event-chip').textContent = t('event.' + eventId);
+  $('wheel-badge').hidden = !wheelState().free;
   $('dailych-badge').hidden = save.dailyCh === dayKey(new Date()) || !save.seenIntro;
   $('btn-dailych').classList.toggle('done', save.dailyCh === dayKey(new Date()));
   $('ach-badge').hidden = !ACH.some((a) => !save.ach[a.id] && achValue(a) >= a.goal);
@@ -718,7 +725,18 @@ function achValue(a) {
     default: return 0;
   }
 }
+function renderStats() {
+  const st = save.st;
+  const worst = Object.entries(st.failBy).sort((a, b) => b[1] - a[1])[0];
+  const rows = [
+    [t('stat.saves'), st.saves], [t('stat.fails'), st.fails], [t('stat.levels'), st.levels],
+    [t('stat.streak'), st.bestStreak], [t('stat.endless'), save.endlessBest], [t('stat.album'), `${albumCount()}/${ENDINGS.length}`],
+    [t('stat.worst'), worst ? `${HZ_ICON[worst[0]] || ''} ×${worst[1]}` : '–'],
+  ];
+  $('stats').innerHTML = rows.map(([k, v]) => `<div class="stat"><b>${v}</b><small>${k}</small></div>`).join('');
+}
 function renderAch() {
+  renderStats();
   $('ach-coins').textContent = save.coins;
   const order = ACH.slice().sort((a, b) => (!!save.ach[a.id] - !!save.ach[b.id]) || (achValue(b) >= b.goal) - (achValue(a) >= a.goal));
   $('ach-list').innerHTML = order.map((a) => {
@@ -738,18 +756,95 @@ function renderAch() {
 }
 
 // level path on the home screen
-function renderMap() {
+let mapStart = 0;
+function renderMap(shift = 0) {
   const cur = save.level;
-  const start = Math.max(1, cur - 2);
-  let html = '';
+  if (!shift) mapStart = Math.max(1, cur - 2);
+  mapStart = Math.max(1, Math.min(cur, mapStart + shift));
+  const start = mapStart;
+  let html = `<button type="button" class="map-arrow" data-d="-5" ${start <= 1 ? 'disabled' : ''} aria-label="Back">‹</button>`;
   for (let n = start; n < start + 5; n++) {
     const cls = n < cur ? 'done' : n === cur ? 'now' : 'lock';
     const st = save.stars[n] || 0;
     const multi = levelSpec(n).stages.length;
     const chest = n % 10 === 0 && !save.chests[n] ? '<span class="chest">🎁</span>' : isBoss(n) ? '<span class="chest">👑</span>' : '';
-    html += `<div class="node ${cls}">${chest || (multi > 1 ? `<span class="boss">×${multi}</span>` : '')}<b>${n}</b><i>${n < cur ? '★'.repeat(st) + '☆'.repeat(3 - st) : ''}</i></div>`;
+    html += `<button type="button" class="node ${cls}" data-n="${n}" ${n > cur ? 'disabled' : ''}>${chest || (multi > 1 ? `<span class="boss">×${multi}</span>` : '')}<b>${n}</b><i>${n < cur ? '★'.repeat(st) + '☆'.repeat(3 - st) : ''}</i></button>`;
   }
+  html += `<button type="button" class="map-arrow" data-d="5" ${start + 4 >= cur ? 'disabled' : ''} aria-label="Next">›</button>`;
   $('map').innerHTML = html;
+  for (const b of $('map').querySelectorAll('.node:not([disabled])')) b.addEventListener('click', (e) => { e.stopPropagation(); unlockAudio(); sfx.tap(); startLevel(Number(b.dataset.n)); });
+  for (const b of $('map').querySelectorAll('.map-arrow')) b.addEventListener('click', (e) => { e.stopPropagation(); sfx.tap(); renderMap(Number(b.dataset.d)); });
+}
+
+// lucky wheel: one free spin a day, three more for an ad
+const WHEEL = [
+  { c: 20, w: 22 }, { h: 1, w: 14 }, { c: 50, w: 18 }, { c: 10, w: 16 },
+  { c: 100, w: 10 }, { h: 2, w: 8 }, { c: 200, w: 6 }, { c: 500, w: 2 },
+];
+const WHEEL_COLORS = ['#ffbe2e', '#8a78f0', '#2eb872', '#ff6f5e', '#2f7cf6', '#ff9ac8', '#7fd3ff', '#e8453c'];
+let wheelAngle = 0;
+let spinning = false;
+const wheelState = () => {
+  const d = dayKey(new Date());
+  if (!save.wheel || save.wheel.day !== d) save.wheel = { day: d, free: 1, ads: 3 };
+  return save.wheel;
+};
+function drawWheel() {
+  const n = WHEEL.length;
+  let svg = '';
+  WHEEL.forEach((seg, i) => {
+    const a0 = (i / n) * Math.PI * 2 - Math.PI / 2, a1 = ((i + 1) / n) * Math.PI * 2 - Math.PI / 2;
+    const x0 = Math.cos(a0) * 140, y0 = Math.sin(a0) * 140, x1 = Math.cos(a1) * 140, y1 = Math.sin(a1) * 140;
+    const am = (a0 + a1) / 2;
+    const label = seg.h ? `${seg.h}💡` : seg.c;
+    svg += `<path d="M0 0 L${x0.toFixed(1)} ${y0.toFixed(1)} A140 140 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${WHEEL_COLORS[i]}" stroke="#2b2140" stroke-width="4"/>`;
+    svg += `<text transform="rotate(${(am * 180) / Math.PI + 90}) translate(0 -96)" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="${seg.c === 500 ? 30 : 26}" fill="#fff" stroke="#2b2140" stroke-width="5" paint-order="stroke">${label}</text>`;
+  });
+  svg += '<circle r="22" fill="#fff7ef" stroke="#2b2140" stroke-width="5"/>';
+  $('wheel-disc').innerHTML = svg;
+  $('wheel-disc').style.transform = `rotate(${wheelAngle}deg)`;
+}
+function renderWheel() {
+  const w = wheelState();
+  $('btn-spin').textContent = w.free > 0 ? t('wheel.free') : w.ads > 0 ? t('wheel.ad', { n: w.ads }) : t('wheel.tomorrow');
+  $('btn-spin').disabled = !w.free && !w.ads;
+  $('wheel-prize').textContent = '';
+  $('wheel-badge').hidden = !w.free;
+}
+async function spinWheel() {
+  if (spinning) return;
+  const w = wheelState();
+  if (!w.free) {
+    if (!w.ads) return;
+    const ok = await showRewarded('wheel');
+    if (!ok) return;
+    w.ads--;
+  } else w.free--;
+  writeSave();
+  spinning = true;
+  $('btn-spin').disabled = true;
+  const total = WHEEL.reduce((a, s2) => a + s2.w, 0);
+  let roll = Math.random() * total, idx = 0;
+  while (roll >= WHEEL[idx].w) { roll -= WHEEL[idx].w; idx++; }
+  const seg = 360 / WHEEL.length;
+  const target = 360 - (idx * seg + seg / 2) + (Math.random() - 0.5) * seg * 0.6;
+  wheelAngle = wheelAngle - (wheelAngle % 360) + 360 * 5 + target;
+  const disc = $('wheel-disc');
+  disc.style.transition = window.__adFast ? 'none' : 'transform 3.2s cubic-bezier(.15,.85,.25,1)';
+  disc.style.transform = `rotate(${wheelAngle}deg)`;
+  sfx.whoosh();
+  await new Promise((r) => setTimeout(r, window.__adFast ? 50 : 3300));
+  const prize = WHEEL[idx];
+  save.coins += prize.c || 0;
+  save.hints += prize.h || 0;
+  writeSave(); updateCoins(); updateHints();
+  sfx.win(); buzz([30, 40, 30]); confetti(prize.c >= 200 ? 60 : 25);
+  $('wheel-prize').textContent = prize.h ? t('wheel.wonh', { n: prize.h }) : t('wheel.wonc', { n: prize.c });
+  track('wheel', { prize: prize.c || 'h' + prize.h });
+  spinning = false;
+  const keep = $('wheel-prize').textContent;
+  renderWheel();
+  $('wheel-prize').textContent = keep;
 }
 
 // shop
@@ -908,6 +1003,10 @@ on('promo-nfa', () => { track('promo_click', { game: 'notafakead' }); openLink(s
 on('promo-tower', () => { track('promo_click', { game: 'tower' }); openLink(storeLink('tower')); });
 on('btn-lost-home', () => { sfx.tap(); goHome(); });
 on('btn-home', () => { if (state === 'acting' || introAd || paused) return; sfx.tap(); goHome(); });
+on('btn-time', () => useTime());
+on('btn-wheel', () => { sfx.tap(); drawWheel(); renderWheel(); showScreen('screen-wheel'); });
+on('btn-spin', () => spinWheel());
+on('btn-wheel-close', () => { if (spinning) return; sfx.tap(); goHome(); });
 on('btn-hint', () => {
   if (state !== 'choose' || introAd) return;
   if (save.hints <= 0 && eventId !== 'freehint') {
@@ -918,6 +1017,23 @@ on('btn-hint', () => {
   }
   useHint();
 });
+function useTime() {
+  if (state !== 'choose' || introAd || level.mode === 'bonus' || stage.timeUsed) return;
+  if (save.hints <= 0 && eventId !== 'freehint') {
+    paused = true;
+    $('btn-hb-buy').textContent = t('shop.buyhints', { p: HINT_PACK });
+    showScreen('screen-hintbuy');
+    return;
+  }
+  if (eventId !== 'freehint') save.hints--;
+  stage.timeUsed = true;
+  run.joker = true;
+  stageT = Math.max(0, stageT - stage.time * 0.4);
+  writeSave(); updateHints();
+  sfx.coin(); buzz(20);
+  say(t('joker.time'));
+  $('btn-time').classList.add('used');
+}
 function useHint() {
   if (state !== 'choose' || (save.hints <= 0 && eventId !== 'freehint')) return;
   const b = [...$('choices').children].find((x) => x.dataset.tool === HAZARDS[stage.hazard].correct);
