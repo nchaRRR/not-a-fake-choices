@@ -27,7 +27,7 @@ export function place(node, x, y, rot = 0, sx = 1, sy = sx) {
 // ------------------------------------------------------------------ the hero
 // Origin at his feet. About 140 units tall. Colours come from CSS variables so moods can
 // repaint him (burnt, frozen) without rebuilding.
-const HERO = `
+const HERO = `<g class="h-inner">
   <g class="h-legs">
     <rect x="-17" y="-44" width="13" height="44" rx="6" fill="var(--pants)" stroke="${INK}" stroke-width="4"/>
     <rect x="4" y="-44" width="13" height="44" rx="6" fill="var(--pants)" stroke="${INK}" stroke-width="4"/>
@@ -44,7 +44,7 @@ const HERO = `
     <g class="h-face"></g>
     <g class="h-hat"></g>
   </g>
-  <g class="h-fx"></g>
+  <g class="h-fx"></g></g>
 `;
 
 const FACES = {
@@ -108,6 +108,8 @@ export function makeHero(o = outfit, p = pet) {
 export function setFace(h, mood) {
   h.face.innerHTML = FACES[mood] || FACES.idle;
   h.mood = mood;
+  h.classList.toggle('scared', mood === 'scared');
+  h.classList.toggle('happy', mood === 'happy');
 }
 
 // down | up (panic / cheer) | hold (holding something in front)

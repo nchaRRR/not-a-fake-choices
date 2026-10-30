@@ -23,6 +23,7 @@ import { makeCard, shareCanvas, svgToImage } from './share.js';
 import { createLeaderboard } from './leaderboard.js';
 import { createCrossRewards } from './crossreward.js';
 import { createInterstitials } from './interstitial.js';
+import { createDecor } from './decor.js';
 import { t, getLang, setLang, applyStatic, sayWord, nextLang, LANG_NAMES } from './i18n.js';
 
 const CLOUD = typeof __CLOUD__ !== 'undefined' && __CLOUD__;
@@ -335,6 +336,9 @@ let gen = 0;
 let introAd = false;
 let taunt = '';
 let paused = false;
+let decor = null;
+let camZ = 1;
+let camX = 200;
 let lastTick = 0;
 let sweatT = 0;
 let blinkT = 2;
@@ -383,6 +387,7 @@ function buildStage(quiet = false) {
   layer.appendChild(hero);
   ctx = makeCtx(layer);
   hz.setup(ctx);
+  decor = createDecor(layer, stage.hazard, hero);
   stageT = 0;
   ambT = 0.4;
   if (!quiet) { const st = $('stage'); st.classList.remove('enter'); void st.getBoundingClientRect(); st.classList.add('enter'); }
@@ -1308,6 +1313,13 @@ function frame(now) {
       }
     }
   }
+  if (decor) decor.update(dt, now / 1000);
+  // camera: slowly pushes in on the hero while the clock runs, eases back otherwise
+  const choosing = state === 'choose' && stage && !paused;
+  const targetZ = choosing ? 1 + 0.07 * Math.min(1, stageT / stage.time) : 1;
+  camZ += (targetZ - camZ) * Math.min(1, dt * (choosing ? 2 : 5));
+  if (hero) { const hx = heroXY()[0]; camX += (Math.max(120, Math.min(280, hx)) - camX) * Math.min(1, dt * 3); }
+  $('cam').setAttribute('transform', `translate(${camX.toFixed(1)} 330) scale(${camZ.toFixed(4)}) translate(${(-camX).toFixed(1)} -330)`);
   for (let i = parts.length - 1; i >= 0; i--) {
     const p = parts[i];
     p.age += dt;

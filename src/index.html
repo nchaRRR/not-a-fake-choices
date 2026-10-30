@@ -312,11 +312,18 @@
   .iap-text b { font-family: var(--font-display); font-size: 17px; line-height: 1.1; }
   .iap-text small { font-weight: 700; font-size: 12px; color: var(--ink-soft); }
   .iap-price { flex: none; font-family: var(--font-display); font-size: 16px; color: #fff; background: var(--green); border: 2px solid var(--ink); border-radius: 10px; padding: 4px 10px 2px; }
+  .hero .h-inner { transform-box: fill-box; transform-origin: 50% 100%; animation: breathe 2.6s ease-in-out infinite; }
+  .hero.scared .h-inner { animation: tremble 0.16s linear infinite; }
+  .hero.happy .h-inner { animation: cheer 0.5s ease-in-out infinite; }
+  @keyframes breathe { 50% { transform: scale(1.015, 1.03); } }
+  @keyframes tremble { 25% { transform: translate(-1px, 0) rotate(-0.6deg); } 75% { transform: translate(1px, 0) rotate(0.6deg); } }
+  @keyframes cheer { 50% { transform: translateY(-3px) scale(1.02, 0.98); } }
+  @media (prefers-reduced-motion: reduce) { .hero .h-inner { animation: none !important; } }
 </style>
 
 <svg id="stage" viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene">
-  <g id="scene"></g>
-  <g id="fx"></g>
+  <g id="cam"><g id="scene"></g>
+  <g id="fx"></g></g>
   <defs><radialGradient id="dangerG" cx="50%" cy="50%" r="70%"><stop offset="0.55" stop-color="#e8453c" stop-opacity="0"/><stop offset="1" stop-color="#e8453c" stop-opacity="0.9"/></radialGradient></defs>
   <rect id="danger" width="400" height="520" fill="url(#dangerG)" opacity="0" pointer-events="none"/>
   <rect id="flash" width="400" height="520" fill="#fff" opacity="0" pointer-events="none"/>
