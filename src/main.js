@@ -17,8 +17,9 @@ import { t, getLang, setLang, applyStatic, sayWord } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const SAVE_KEY = 'nfa-choices-v1';
+const BASE = () => ({ level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0, pet: 'none', pets: ['none'], chests: {}, vibe: true, streak: 0, st: { saves: 0, fails: 0, bestStreak: 0, levels: 0, failBy: {} } });
 const save = (() => {
-  const base = { level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0, pet: 'none', pets: ['none'], chests: {}, vibe: true, streak: 0, st: { saves: 0, fails: 0, bestStreak: 0, levels: 0, failBy: {} } };
+  const base = BASE();
   try { return { ...base, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; } catch (e) { return base; }
 })();
 const saveWatchers = [];
@@ -978,6 +979,8 @@ const account = createAccount({
 });
 function renderSettings() {
   $('account-state').textContent = account.label();
+  resetArmed = false;
+  $('btn-reset').textContent = t('set.reset');
   $('tg-sound').setAttribute('aria-checked', String(!save.muted));
   $('tg-music').setAttribute('aria-checked', String(save.music));
   $('tg-vibe').setAttribute('aria-checked', String(save.vibe));
@@ -1084,6 +1087,20 @@ on('btn-account', () => { sfx.tap(); $('screen-settings').hidden = true; account
 on('btn-settings-close', () => { sfx.tap(); goHome(); });
 on('tg-sound', () => { save.muted = !save.muted; setMuted(save.muted); writeSave(); renderSettings(); sfx.tap(); });
 on('tg-vibe', () => { save.vibe = !save.vibe; writeSave(); renderSettings(); buzz(30); sfx.tap(); });
+let resetArmed = false;
+on('btn-reset', () => {
+  sfx.tap();
+  if (!resetArmed) { resetArmed = true; $('btn-reset').textContent = t('set.sure'); return; }
+  resetArmed = false;
+  const keep = { muted: save.muted, music: save.music, vibe: save.vibe, notify: save.notify, account: save.account, accountBonus: save.accountBonus, seenIntro: 1 };
+  for (const k of Object.keys(save)) delete save[k];
+  Object.assign(save, BASE(), keep);
+  setOutfit(save.outfit); setPet(save.pet);
+  writeSave();
+  track('reset');
+  toast(t('set.resetDone'));
+  goHome();
+});
 on('tg-notify', () => { save.notify = save.notify === false; writeSave(); renderSettings(); sfx.tap(); if (save.notify) askNotificationPermission(); scheduleNotifications(save); });
 on('btn-adprivacy', () => { sfx.tap(); if (adPrivacy) adPrivacy.showPrivacyOptions(); });
 for (const id of ['link-privacy', 'link-support']) $(id).addEventListener('click', (e) => { e.preventDefault(); openLink($(id).href); });
