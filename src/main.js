@@ -5,6 +5,7 @@ import { el, g, place, makeHero, setFace, setArms, paintHero, toolSvg, toolNode,
 import { joke } from './jokes.js';
 import { showRewarded } from './ads.js';
 import { storeLink, openLink } from './promo.js';
+import { createAccount } from './account.js';
 import { HAZARDS, HAZARD_IDS } from './hazards.js';
 import { sfx, unlockAudio, setMuted } from './audio.js';
 import { startMusic, setMusicEnabled } from './music.js';
@@ -17,7 +18,11 @@ const save = (() => {
   const base = { level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0, pet: 'none', pets: ['none'], chests: {}, vibe: true, streak: 0, st: { saves: 0, fails: 0, bestStreak: 0, levels: 0, failBy: {} } };
   try { return { ...base, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; } catch (e) { return base; }
 })();
-const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* session only */ } };
+const saveWatchers = [];
+const writeSave = () => {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* session only */ }
+  for (const f of saveWatchers) try { f(); } catch (e) { /* ignore */ }
+};
 setMuted(save.muted);
 setOutfit(save.outfit);
 setPet(save.pet);
@@ -539,6 +544,7 @@ async function lost(type, fresh = false, tool = '') {
   state = 'lost';
   const my = gen;
   sfx.lose();
+  if (!introAd) account.onRunEnd();
   stamp('FAIL', false);
   track('level_fail', { level: level.n, hazard: stage.hazard, type });
   await wait(1.2);
@@ -595,6 +601,8 @@ async function won() {
   }
   writeSave();
   track('level_win', { level: level.n });
+  account.onRunEnd();
+  setTimeout(() => { if (state === 'won' && my === gen) account.maybeAsk(); }, 2400);
   await wait(0.3);
   if (my !== gen) return;
   const daily = level.mode === 'daily';
@@ -946,7 +954,26 @@ function claimDaily() {
 }
 
 // settings
+let toastTimer = 0;
+function toast(msg, kind = '') {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + kind;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+}
+const anyModalOpen = () => screens.filter((id) => !['screen-home', 'screen-won', 'screen-lost'].includes(id)).some((id) => !$(id).hidden) || !$('screen-account').hidden;
+const account = createAccount({
+  save, writeSave, sfx, track, anyModalOpen,
+  fmt: (n) => String(n),
+  popup: (msg, kind) => toast(msg, kind),
+  refreshWallet: () => updateCoins(),
+  watchSave: (f) => saveWatchers.push(f),
+  backToSettings: () => { renderSettings(); showScreen('screen-settings'); },
+});
 function renderSettings() {
+  $('account-state').textContent = account.label();
   $('tg-sound').setAttribute('aria-checked', String(!save.muted));
   $('tg-music').setAttribute('aria-checked', String(save.music));
   $('tg-vibe').setAttribute('aria-checked', String(save.vibe));
@@ -1047,6 +1074,7 @@ function useHint() {
 }
 on('btn-lang', () => { setLang(getLang() === 'tr' ? 'en' : 'tr'); sfx.tap(); renderSettings(); });
 on('btn-settings', () => { sfx.tap(); renderSettings(); showScreen('screen-settings'); });
+on('btn-account', () => { sfx.tap(); $('screen-settings').hidden = true; account.open('settings'); });
 on('btn-settings-close', () => { sfx.tap(); goHome(); });
 on('tg-sound', () => { save.muted = !save.muted; setMuted(save.muted); writeSave(); renderSettings(); sfx.tap(); });
 on('tg-vibe', () => { save.vibe = !save.vibe; writeSave(); renderSettings(); buzz(30); sfx.tap(); });

@@ -16,7 +16,7 @@ try {
   esbuild = require('/opt/npm-tools/node_modules/esbuild');
 }
 
-async function bundle() {
+async function bundle(cloud) {
   const result = await esbuild.build({
     entryPoints: [resolve(root, 'src/main.js')],
     bundle: true,
@@ -25,14 +25,15 @@ async function bundle() {
     target: ['es2020', 'safari15'],
     write: false,
     legalComments: 'none',
+    define: { __CLOUD__: String(cloud) },
     loader: { '.webp': 'dataurl' },
   });
   const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
   return page.replace('<!--GAME_SCRIPT-->', () => `<script>${js}</script>`);
 }
 const page = readFileSync(resolve(root, 'src/index.html'), 'utf8');
-const body = await bundle();
-const appPage = body;
+const body = await bundle(false);
+const appPage = await bundle(true);
 
 mkdirSync(resolve(root, 'dist/app/fonts'), { recursive: true });
 writeFileSync(resolve(root, 'dist/nfa-choices.html'), body);
