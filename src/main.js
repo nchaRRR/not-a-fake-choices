@@ -6,6 +6,8 @@ import { joke } from './jokes.js';
 import { showRewarded } from './ads.js';
 import { storeLink, openLink } from './promo.js';
 import { createAccount } from './account.js';
+import { runOpening } from './opening.js';
+import { TOOLS, OUTFITS as ALL_OUTFITS, PETS as ALL_PETS } from './art.js';
 import { HAZARDS, HAZARD_IDS } from './hazards.js';
 import { sfx, unlockAudio, setMuted } from './audio.js';
 import { startMusic, setMusicEnabled } from './music.js';
@@ -1182,6 +1184,43 @@ applyStatic();
 goHome();
 requestAnimationFrame(frame);
 track('session_start');
+
+// ---------------------------------------------------------------- opening + first-launch pages
+function onboardArt() {
+  const ink = '#2b2140';
+  const heroAt = (h, x, y, sc = 1) => `<g transform="translate(${x} ${y}) scale(${sc})">${h.outerHTML}</g>`;
+  const tool = (id, x, y, sc) => `<g transform="translate(${x} ${y}) scale(${sc}) translate(-50 -50)">${TOOLS[id]}</g>`;
+  const card = (id, x, glow) => `<rect x="${x - 38}" y="210" width="76" height="76" rx="16" fill="${glow ? '#fff2b8' : '#fff'}" stroke="${glow ? '#ffbe2e' : ink}" stroke-width="${glow ? 7 : 4}"/>${tool(id, x, 248, 0.58)}`;
+  const h1 = makeHero(ALL_OUTFITS[0], ALL_PETS[0]); setArms(h1, 'up'); setFace(h1, 'scared');
+  const h3 = makeHero(ALL_OUTFITS[0], ALL_PETS[0]); setArms(h3, 'up'); setFace(h3, 'hurt'); paintHero(h3, 'burnt');
+  const h4 = makeHero(ALL_OUTFITS.find((o) => o.id === 'cowboy'), ALL_PETS.find((p) => p.id === 'dog')); setFace(h4, 'happy'); setArms(h4, 'up');
+  const p1 = `<svg viewBox="0 0 300 300"><rect width="300" height="300" fill="#4a1e2a"/><path d="M0 250 q25 -12 50 0 t50 0 t50 0 t50 0 t50 0 t50 0 V300 H0 Z" fill="#ff6a1e" stroke="${ink}" stroke-width="4"/>
+    <rect x="147" y="0" width="6" height="70" fill="#c9a06b"/>${heroAt(h1, 150, 232, 1)}${tool('gasoline', 222, 150, 0.6)}
+    <rect x="14" y="14" width="44" height="24" rx="6" fill="#ffbe2e" stroke="${ink}" stroke-width="3"/><text x="36" y="32" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="15" fill="${ink}">AD</text></svg>`;
+  const p2 = `<svg viewBox="0 0 300 300"><rect width="300" height="300" fill="#ffe0c4"/><path d="M120 190 h160 v-110 l-80 -50 l-80 50 Z" fill="#f3dcc0" stroke="${ink}" stroke-width="4"/>
+    <path d="M150 120 C134 138 136 160 150 162 C164 160 166 138 150 120 Z M210 100 C196 116 198 134 210 136 C222 134 224 116 210 100 Z" fill="#ff8a2e" stroke="${ink}" stroke-width="3"/>
+    <rect x="20" y="186" width="260" height="14" rx="7" fill="#ecd9cb" stroke="${ink}" stroke-width="3"/><rect x="22" y="188" width="150" height="10" rx="5" fill="#2eb872"/>
+    ${card('gasoline', 62, false)}${card('extinguisher', 150, true)}${card('fan', 238, false)}<text x="176" y="296" font-size="44">👆</text></svg>`;
+  const p3 = `<svg viewBox="0 0 300 300"><rect width="300" height="300" fill="#ffd9a0"/>${heroAt(h3, 92, 270, 1.05)}
+    <g transform="translate(160 66) rotate(-12)"><rect x="-70" y="-26" width="140" height="56" rx="12" fill="#fff" stroke="#e8453c" stroke-width="7"/><text y="20" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="46" fill="#e8453c">FAIL</text></g>
+    ${[0, 1, 2, 3, 4, 5].map((i) => `<rect x="${170 + (i % 3) * 40}" y="${140 + Math.floor(i / 3) * 44}" width="34" height="38" rx="8" fill="${i < 4 ? '#fff2b8' : '#e6dcd4'}" stroke="${ink}" stroke-width="3"/>${i < 4 ? tool(['gasoline', 'sword', 'banana', 'fan'][i], 187 + (i % 3) * 40, 159 + Math.floor(i / 3) * 44, 0.26) : `<text x="${187 + (i % 3) * 40}" y="${167 + Math.floor(i / 3) * 44}" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="20" fill="#5d5172">?</text>`}`).join('')}</svg>`;
+  const p4 = `<svg viewBox="0 0 300 300"><rect width="300" height="300" fill="#bfe8ff"/><rect y="250" width="300" height="50" fill="#7cc35a"/>
+    ${heroAt(h4, 130, 252, 1.05)}<g transform="translate(232 90)"><circle r="26" fill="#ffbe2e" stroke="${ink}" stroke-width="4"/><circle r="15" fill="none" stroke="#c98a00" stroke-width="3"/></g>
+    <g transform="translate(250 160)"><circle r="18" fill="#ffbe2e" stroke="${ink}" stroke-width="4"/></g><text x="30" y="70" font-size="42">🎁</text><text x="40" y="150" font-size="34">👑</text></svg>`;
+  return [p1, p2, p3, p4];
+}
+const arts = onboardArt();
+runOpening({
+  key: 'nfa-choices',
+  logo: '<h1 class="logo">Not a<br><span class="strike">Fake</span> Ad<span class="sub">CHOICES</span></h1>',
+  pages: [1, 2, 3, 4].map((i) => ({ art: arts[i - 1], title: t(`ob.${i}.t`), body: t(`ob.${i}.b`) })),
+  str: { presents: t('ob.presents'), notFake: t('ob.notfake'), skip: t('ob.skip'), next: t('ob.next'), start: t('ob.start') },
+  onboard: !save.seenIntro && save.level <= 1,
+  onTap: () => unlockAudio(),
+}).then(({ onboarded }) => {
+  track('opening_done', { onboarded });
+  if (onboarded && state === 'home') startIntro();
+});
 
 // test hooks (headless bot)
 window.__choices = {
