@@ -1,7 +1,9 @@
 // Not a Fake Ad: Choices — the "pick the right item to save him" puzzles from the ads, made playable.
 // Each level is one to three dangers in a row. For each, tap the one item (of two or three) that saves
 // the hero before the bar runs out. Wrong picks end the way the ads always end.
-import { el, g, place, makeHero, setFace, setArms, paintHero, toolSvg, toolNode, OUTFITS, setOutfit, PETS, setPet } from './art.js';
+import { el, g, place, makeHero, setFace, setArms, paintHero, toolSvg, toolNode, OUTFITS as OUTFITS_ALL, setOutfit, PETS, setPet, setSeasonHat } from './art.js';
+import { seasonNow, buildSnow, garland } from './season.js';
+import { createCards } from './cards.js';
 import { joke } from './jokes.js';
 import { showRewarded, adPrivacy, setSkipAds } from './ads.js';
 import { createPayments, PRODUCTS } from './payments.js';
@@ -60,6 +62,33 @@ remote.refresh();
 const coinMult = () => (eventId === 'gold' ? 2 : eventId === 'speed' ? 1.5 : 1) * remote.num('coin_mult', 1, 0.2, 5);
 const timeMult = () => (eventId === 'speed' ? 0.8 : 1);
 const HINT_PACK = 100;
+
+// ---------------------------------------------------------------- seasons (Christmas)
+let season = '';
+function applySeason() {
+  season = seasonNow(remote);
+  const xmas = season === 'xmas';
+  document.documentElement.classList.toggle('xmas', xmas);
+  setSeasonHat(xmas);
+  if (xmas) {
+    buildSnow();
+    if (!$('garland-slot').innerHTML) $('garland-slot').innerHTML = garland();
+  }
+}
+// seasonal outfits only show in the shop during their season (or once owned)
+const OUTFITS_VIS = () => OUTFITS_ALL.filter((o) => !o.season || o.season === season || save.owned.includes(o.id));
+const XMAS_GIFT = 60;
+const cards = createCards({ save, writeSave, t, sfx, track, onCoins: () => updateCoins(), onHints: () => updateHints() });
+function xmasGift() {
+  if (season !== 'xmas' || !save.seenIntro) return;
+  const today = dayKey(new Date());
+  if (save.xmasGift === today) return;
+  save.xmasGift = today;
+  save.coins += XMAS_GIFT;
+  writeSave(); updateCoins();
+  track('xmas_gift', {});
+  setTimeout(() => { toast(t('xmas.gift', { n: XMAS_GIFT }), 'good'); confetti(30); sfx.coin(); }, 900);
+}
 
 // ---------------------------------------------------------------- levels
 function rng(seed) {
@@ -700,6 +729,14 @@ async function won() {
     box.children[i].classList.add('on', 'pop');
     sfx.coin();
   }
+  // a collectible card: always after a boss level or the first daily win, sometimes otherwise
+  const cardChance = level.boss || dailyFirst ? 1 : level.mode === 'level' && level.n > 0 ? remote.num('card_chance', 0.35, 0, 1) : 0;
+  if (cardChance) {
+    await wait(0.5);
+    if (my !== gen || state !== 'won') return;
+    await cards.maybeDrop(cardChance, level.stages.map((st) => st.hazard));
+    updateCoins();
+  }
 }
 
 // ---------------------------------------------------------------- the "ad" intro: the guy picks wrong
@@ -741,6 +778,7 @@ function updateCoins() { $('hud-coins').textContent = save.coins; $('home-coins'
 function updateHints() { $('hint-count').textContent = eventId === 'freehint' ? '∞' : save.hints > 0 ? save.hints : '+'; }
 function goHome() {
   gen++;
+  applySeason();
   setSong('main');
   state = 'home';
   introAd = false;
@@ -759,12 +797,15 @@ function goHome() {
   $('choices').innerHTML = '';
   showScreen('screen-home');
   renderMap();
-  $('shop-badge').hidden = !OUTFITS.some((o) => !save.owned.includes(o.id) && o.price <= save.coins);
+  $('shop-badge').hidden = !OUTFITS_VIS().some((o) => !save.owned.includes(o.id) && o.price <= save.coins);
   $('event-chip').textContent = t('event.' + eventId);
   $('wheel-badge').hidden = !wheelState().free;
   showNotice();
+  xmasGift();
+  $('xmas-chip').hidden = season !== 'xmas';
   $('dailych-badge').hidden = save.dailyCh === dayKey(new Date()) || !save.seenIntro;
   $('btn-dailych').classList.toggle('done', save.dailyCh === dayKey(new Date()));
+  $('cards-badge').hidden = !cards.newCount();
   $('ach-badge').hidden = !ACH.some((a) => !save.ach[a.id] && achValue(a) >= a.goal);
   if (save.seenIntro && dailyReady()) openDaily();
   else {
@@ -942,14 +983,14 @@ function heroPreview(o, p) {
 function renderShop() {
   $('shop-coins').textContent = save.coins;
   $('btn-buy-hints').textContent = t('shop.buyhints', { p: HINT_PACK });
-  $('shop-grid').innerHTML = OUTFITS.map((o) => {
+  $('shop-grid').innerHTML = OUTFITS_VIS().map((o) => {
     const own = save.owned.includes(o.id);
     const on = save.outfit === o.id;
-    const price = on ? t('shop.wearing') : own ? t('shop.owned') : `<span class="coin-icon"></span>${o.price}`;
+    const price = on ? t('shop.wearing') : own ? t('shop.owned') : o.season ? t('xmas.free') : `<span class="coin-icon"></span>${o.price}`;
     return `<button type="button" class="outfit ${on ? 'on' : ''} ${own ? '' : 'locked'}" data-id="${o.id}">${heroPreview(o)}<span class="name">${t('outfit.' + o.id)}</span><span class="price">${price}</span></button>`;
   }).join('');
   for (const b of $('shop-grid').children) b.addEventListener('click', () => buyOutfit(b.dataset.id, b));
-  const cur = OUTFITS.find((o) => o.id === save.outfit) || OUTFITS[0];
+  const cur = OUTFITS_ALL.find((o) => o.id === save.outfit) || OUTFITS_ALL[0];
   $('pet-grid').innerHTML = PETS.map((p) => {
     const own = save.pets.includes(p.id);
     const on = save.pet === p.id;
@@ -973,7 +1014,7 @@ function buyPet(id, btn) {
   writeSave(); updateCoins(); renderShop();
 }
 function buyOutfit(id, btn) {
-  const o = OUTFITS.find((x) => x.id === id);
+  const o = OUTFITS_ALL.find((x) => x.id === id);
   if (!save.owned.includes(id)) {
     if (save.coins < o.price) {
       sfx.lose();
@@ -983,7 +1024,7 @@ function buyOutfit(id, btn) {
     save.coins -= o.price;
     save.owned.push(id);
     sfx.buy();
-    track('outfit_buy', { id });
+    track(o.season ? 'xmas_outfit' : 'outfit_buy', { id });
   } else sfx.tap();
   save.outfit = id;
   setOutfit(id);
@@ -1127,6 +1168,7 @@ on('btn-chest', () => {
 on('btn-next', () => { sfx.tap(); if (pendingChest) openChestScreen(() => afterWin(false)); else afterWin(false); });
 on('btn-won-home', () => { sfx.tap(); if (pendingChest) openChestScreen(() => afterWin(true)); else afterWin(true); });
 on('btn-retry', () => { sfx.tap(); if (level.mode === 'endless') startLevel(-1, level.target ? endlessSpec(level.seed, level.target) : endlessSpec()); else if (level.mode === 'daily') startLevel(-2, dailySpec()); else startLevel(level.n); });
+on('btn-cards', () => { sfx.tap(); cards.open(); $('cards-badge').hidden = true; });
 on('btn-endless', () => { sfx.tap(); startLevel(-1, endlessSpec()); });
 // ---------------------------------------------------------------- challenge a friend
 let chIncoming = null;
@@ -1479,5 +1521,7 @@ window.__choices = {
   optionsFor: (id) => [HAZARDS[id].correct, ...Object.keys(HAZARDS[id].wrong)],
   pickTool: (id) => { const b = [...$('choices').children].find((x) => x.dataset.tool === id); b && pick(id, b); },
   pickWrong: () => { const b = [...$('choices').children].find((x) => x.dataset.tool !== HAZARDS[stage.hazard].correct); b && pick(b.dataset.tool, b); },
+  cards,
+  setSeason: (v) => { window.__season = v; goHome(); },
   showHazard: (id) => { gen++; $('bottom').hidden = false; $('stamp').hidden = true; fxG.innerHTML = ''; level = { n: 1, stages: [{ hazard: id, options: [HAZARDS[id].correct, ...Object.keys(HAZARDS[id].wrong)], time: 99 }] }; stageIdx = 0; showScreen(null); $('hud').hidden = false; buildStage(); },
 };

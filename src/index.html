@@ -176,7 +176,7 @@
   .home-btns { display: flex; gap: 8px; }
 
   /* home mode tiles */
-  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
   .tile { position: relative; border: 3px solid var(--ink); border-radius: 16px; background: var(--paper); box-shadow: 0 4px 0 var(--ink); padding: 6px 2px 5px; cursor: pointer;
           display: flex; flex-direction: column; align-items: center; gap: 1px; font: 800 12px/1.1 var(--font-body); color: var(--ink); }
   .tile span { font-size: 24px; line-height: 1.1; }
@@ -331,6 +331,22 @@
   html.wide body { background: radial-gradient(circle at 12px 12px, rgba(255,255,255,0.09) 3px, transparent 4px) 0 0 / 28px 28px, linear-gradient(#3b2d5c, #2b2140); }
   html.wide #stage { border-inline: 4px solid var(--ink); }
   html.wide #bottom { border-inline: 4px solid var(--ink); }
+
+  /* ---------- Christmas (html.xmas) ---------- */
+  #garland-slot { display: none; }
+  html.xmas #garland-slot { display: block; position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 56px); height: 34px; pointer-events: none; z-index: 0; }
+  #garland-slot .garland { width: 100%; height: 100%; }
+  html.xmas #screen-home .ad-tag { margin-top: 22px; }
+  #garland-slot .bulb { animation: bulb 1.2s ease-in-out infinite; }
+  @keyframes bulb { 50% { opacity: 0.45; } }
+  #snow { display: none; }
+  html.xmas #snow { display: block; position: fixed; inset: 0; z-index: 9; pointer-events: none; overflow: hidden; }
+  #snow i { position: absolute; top: -20px; border-radius: 50%; background: #fff; opacity: 0.85; box-shadow: 0 0 0 1.5px rgba(43,33,64,0.25); animation-name: snowfall, snowsway; animation-timing-function: linear, ease-in-out; animation-iteration-count: infinite; }
+  @keyframes snowfall { to { top: 105%; } }
+  @keyframes snowsway { 50% { transform: translateX(24px); } }
+  html.xmas body:has(#screen-home[hidden]) #snow { display: none; }
+  .xmas-chip { background: #e8453c !important; color: #fff !important; }
+  @media (prefers-reduced-motion: reduce) { #snow i, #garland-slot .bulb { animation: none; } }
 </style>
 
 <svg id="stage" viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene">
@@ -363,6 +379,7 @@
 <div id="stamp" class="stamp" hidden>FAIL</div>
 
 <section id="screen-home" class="screen">
+  <div id="garland-slot" aria-hidden="true"></div>
   <div class="home-top">
     <span class="chip"><span class="coin-icon" aria-hidden="true"></span><span id="home-coins">0</span></span>
     <div class="home-btns">
@@ -377,6 +394,7 @@
   <h1 class="logo">Not a<br><span class="strike">Fake</span> Ad<span class="sub">CHOICES</span></h1>
   <p class="tagline" data-i18n="tagline">Save the guy from those ads. Pick right.</p>
   <p class="event" id="event-chip"></p>
+  <p class="event xmas-chip" id="xmas-chip" data-i18n="xmas.chip" hidden>🎄 Merry Christmas! Free Santa outfit in the shop</p>
   <div class="home-bottom">
     <div id="map" aria-label="Levels"></div>
     <button class="btn btn-big btn-green" id="btn-play" type="button">Play</button>
@@ -384,6 +402,7 @@
       <button class="tile" id="btn-endless" type="button"><span>♾️</span><em data-i18n="tile.endless" style="font-style:normal">Endless</em></button>
       <button class="tile" id="btn-dailych" type="button"><span>📅</span><em data-i18n="tile.daily" style="font-style:normal">Daily</em><span class="badge" id="dailych-badge" hidden>!</span></button>
       <button class="tile" id="btn-album" type="button"><span>📖</span><em data-i18n="tile.album" style="font-style:normal">Album</em></button>
+      <button class="tile" id="btn-cards" type="button"><span>🃏</span><em data-i18n="tile.cards" style="font-style:normal">Cards</em><span class="badge" id="cards-badge" hidden>!</span></button>
       <button class="tile" id="btn-ach" type="button"><span>🏆</span><em data-i18n="tile.ach" style="font-style:normal">Awards</em><span class="badge" id="ach-badge" hidden>!</span></button>
     </div>
   </div>

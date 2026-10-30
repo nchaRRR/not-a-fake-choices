@@ -71,6 +71,7 @@ export const OUTFITS = [
   { id: 'cowboy', price: 800, shirt: '#c9893b', pants: '#3a5a8a', hair: '#6b3f22', hat: `<path d="M-50 -140 q50 16 100 0 q-6 10 -20 12 h-60 q-14 -2 -20 -12 Z" fill="#8a5a32" ${H}/><path d="M-24 -136 C-28 -170 -8 -166 0 -158 C8 -166 28 -170 24 -136 Z" fill="#8a5a32" ${H}/><path d="M-24 -142 h48" stroke="${INK}" stroke-width="5"/>` },
   { id: 'pirate', price: 1200, shirt: '#f6f6f6', pants: '#2b2b38', hair: '#2b1a10', hat: `<path d="M-30 -130 C-28 -156 28 -156 30 -130 Z" fill="#e8453c" ${H}/><circle cx="-6" cy="-142" r="4" fill="#fff"/><circle cx="8" cy="-144" r="4" fill="#fff"/><path d="M28 -132 l14 4 l-10 10 Z" fill="#e8453c" ${H}/><path d="M-22 -126 L22 -110" stroke="${INK}" stroke-width="3"/><ellipse cx="10" cy="-116" rx="8" ry="7" fill="${INK}"/>` },
   { id: 'astro', price: 2000, shirt: '#e6ecf4', pants: '#c8d2e0', hair: '#6b3f22', hat: `<circle cx="0" cy="-118" r="38" fill="#bfeaff" opacity="0.35" ${H}/><path d="M-20 -146 q10 -6 20 -4" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="-6" y="-166" width="12" height="12" rx="3" fill="#e8453c" ${H}/>` },
+  { id: 'santa', price: 0, season: 'xmas', shirt: '#e8453c', pants: '#2b2140', hair: '#f6f6f6', hat: `<path d="M-30 -132 C-26 -168 18 -176 34 -150 L40 -128 Z" fill="#e8453c" ${H}/><circle cx="40" cy="-126" r="8" fill="#fff" ${H}/><rect x="-32" y="-140" width="64" height="14" rx="7" fill="#fff" ${H}/><path d="M-22 -104 C-24 -76 24 -76 22 -104 C12 -96 -12 -96 -22 -104 Z" fill="#fff" stroke="${INK}" stroke-width="3"/>` },
   { id: 'king', price: 3500, shirt: '#8a78f0', pants: '#4b3a8a', hair: '#ffd34d', hat: `<path d="M-24 -138 L-26 -168 L-12 -152 L0 -172 L12 -152 L26 -168 L24 -138 Z" fill="#ffbe2e" ${H}/><circle cx="0" cy="-150" r="4" fill="#e8453c"/>` },
 ];
 // Pets stand beside the hero (or sit on his shoulder) and go wherever he goes.
@@ -84,6 +85,11 @@ export const PETS = [
 let pet = PETS[0];
 export function setPet(id) { pet = PETS.find((p) => p.id === id) || PETS[0]; }
 
+// During Christmas, hatless outfits get a Santa hat.
+export const SANTA_HAT = `<path d="M-28 -134 C-24 -166 16 -172 32 -148 L38 -128 Z" fill="#e8453c" ${H}/><circle cx="38" cy="-126" r="7" fill="#fff" ${H}/><rect x="-30" y="-142" width="60" height="13" rx="6.5" fill="#fff" ${H}/>`;
+let seasonHat = '';
+export function setSeasonHat(on) { seasonHat = on ? SANTA_HAT : ''; }
+
 let outfit = OUTFITS[0];
 export function setOutfit(id) { outfit = OUTFITS.find((o) => o.id === id) || OUTFITS[0]; }
 
@@ -95,7 +101,7 @@ export function makeHero(o = outfit, p = pet) {
     if (p.id === 'parrot') h.appendChild(pg); else h.insertBefore(pg, h.firstChild);
   }
   h.outfit = o;
-  h.querySelector('.h-hat').innerHTML = o.hat;
+  h.querySelector('.h-hat').innerHTML = o.hat || seasonHat;
   h.arms = [h.querySelector('.h-arm-l'), h.querySelector('.h-arm-r')];
   h.face = h.querySelector('.h-face');
   h.fx = h.querySelector('.h-fx');
