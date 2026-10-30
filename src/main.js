@@ -46,7 +46,8 @@ function rng(seed) {
 // dangers comes back.
 const INTRO = ['fire', 'shark', 'bear', 'cold', 'desert', 'thief', 'bees', 'flood', 'ghost', 'bomb', 'dragon', 'vampire', 'gorilla', 'meteor', 'dino', 'lava', 'mice', 'snake', 'tornado', 'zombie', 'lion', 'spider', 'carsink', 'alien', 'boulder', 'airballoon', 'witch', 'robot', 'bull', 'skunk', 'avalanche', 'quicksand', 'tsunami', 'lightning', 'piranha'].filter((id) => HAZARDS[id]);
 for (const id of HAZARD_IDS) if (!INTRO.includes(id)) INTRO.push(id);
-const stageCount = (n) => (n >= 30 && n % 5 === 0 ? 3 : n >= 12 && n % 3 === 0 ? 2 : 1);
+const isBoss = (n) => n >= 25 && n % 25 === 0;
+const stageCount = (n) => (isBoss(n) ? 4 : n >= 30 && n % 5 === 0 ? 3 : n >= 12 && n % 3 === 0 ? 2 : 1);
 const seqCache = [[]];
 const seqRecent = [];
 const seqUses = {};
@@ -79,7 +80,7 @@ export function levelSpec(n) {
   if (n === 0) return { n, stages: [{ hazard: 'lava', options: ['gasoline', 'water'], time: 12 }] };
   const r = rng(n * 7919 + 17);
   const choices = n <= 6 ? 2 : n < 40 ? 3 : 4;
-  const time = Math.max(4.5, 10 - n * 0.09);
+  const time = Math.max(4.5, 10 - n * 0.09) * (isBoss(n) ? 0.85 : 1);
   const decoy = n < 8 ? 0 : n < 25 ? 0.4 : 0.6;
   const list = levelHazards(n).map((id, k) => {
     const st = makeStage(id, r, choices, time, decoy);
@@ -88,7 +89,7 @@ export function levelSpec(n) {
     st.twist = n >= 28 && roll < 0.12 ? 'swap' : n >= 18 && roll < 0.32 ? 'mystery' : null;
     return st;
   });
-  return { n, mode: 'level', stages: list };
+  return { n, mode: 'level', stages: list, boss: isBoss(n) };
 }
 // Silly items that never save anyone; mixed in as wrong answers so the same danger looks different.
 const DECOYS = ['teddy', 'broccoli', 'icecream', 'ketchup', 'cheese', 'flower', 'drum', 'paper', 'sponge', 'candle', 'salt', 'clothespin', 'garlic', 'kite'];
@@ -123,6 +124,20 @@ function endlessSpec() {
   const lv = { n: -1, mode: 'endless', stages: [], score: 0, paid: 0, r: rng((Date.now() & 0xffffff) + 1) };
   lv.stages.push(endlessStage(lv));
   return lv;
+}
+// Bonus round: the ad guy grabs something, the player calls whether it works.
+function bonusSpec(after) {
+  const r = rng(after * 977 + 3);
+  const ids = HAZARD_IDS.slice();
+  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  const stages = ids.slice(0, 3).map((id) => {
+    const hz = HAZARDS[id];
+    const works = r() < 0.5;
+    const wr = Object.keys(hz.wrong);
+    const item = works ? hz.correct : wr[Math.floor(r() * wr.length)];
+    return { hazard: id, options: [item], item, works, time: 99 };
+  });
+  return { n: -3, mode: 'bonus', stages, next: after + 1, right: 0 };
 }
 // Daily challenge: the same five dangers for everyone on the same day.
 function dailySpec() {
@@ -293,6 +308,9 @@ let gen = 0;
 let introAd = false;
 let taunt = '';
 let paused = false;
+let lastTick = 0;
+let sweatT = 0;
+let blinkT = 2;
 let pendingChest = 0;
 let run = { fracs: [], hint: false, revived: false };
 
@@ -312,6 +330,14 @@ function startLevel(n, spec) {
   updateCoins();
   updateHints();
   buildStage();
+  if (level.mode === 'bonus') $('taunt').textContent = t('bonus.q');
+  if (level.boss) {
+    $('taunt').textContent = t('boss.taunt');
+    stamp(t('boss'), false);
+    paused = true;
+    const my = gen;
+    wait(1.3).then(() => { if (my !== gen) return; $('stamp').hidden = true; paused = false; });
+  }
   track('level_start', { level: n });
 }
 
@@ -335,7 +361,12 @@ function buildStage(quiet = false) {
   // choices
   const box = $('choices');
   box.innerHTML = '';
-  stage.options.forEach((id) => {
+  $('timer').style.visibility = level.mode === 'bonus' ? 'hidden' : '';
+  if (level.mode === 'bonus') {
+    box.innerHTML = `<div class="choice item-card">${toolSvg(stage.item)}</div><button type="button" class="guess yes">✓<small>${t('bonus.yes')}</small></button><button type="button" class="guess no">✗<small>${t('bonus.no')}</small></button>`;
+    box.querySelector('.yes').addEventListener('click', () => guess(true));
+    box.querySelector('.no').addEventListener('click', () => guess(false));
+  } else stage.options.forEach((id) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'choice';
@@ -352,7 +383,8 @@ function buildStage(quiet = false) {
     b.classList.add('mystery');
     b.innerHTML = '<span class="q">?</span>';
   }
-  if (level.n === 1 && stageIdx === 0 && !introAd && !quiet) say(t('quick'));
+  if (level.mode === 'bonus' && !quiet) { setArms(hero, 'hold'); say('?'); }
+  else if (level.n === 1 && stageIdx === 0 && !introAd && !quiet) say(t('quick'));
   else if (stage.isNew && !quiet && !introAd) say(t('new.hazard'));
   else if (stage.twist && !quiet) say(t('twist.' + stage.twist));
 }
@@ -440,10 +472,56 @@ async function pick(id, btn) {
   }
 }
 
+async function guess(yes) {
+  if (state !== 'choose') return;
+  state = 'acting';
+  unlockAudio();
+  const my = gen;
+  const hz = HAZARDS[stage.hazard];
+  const right = yes === stage.works;
+  for (const b of $('choices').querySelectorAll('.guess')) { b.disabled = true; if (b.classList.contains('yes') !== yes) b.classList.add('dim'); }
+  sfx.tap(); buzz(12);
+  const [hx, hy] = heroXY();
+  const flying = ctx.tool(stage.item, 200, 560, 0.5);
+  await T(0.35, (k) => place(flying, 200 + (hx + 40 - 200) * ease(k), 560 + (hy - 130 - 560) * ease(k) - Math.sin(k * Math.PI) * 40, k * 360, 0.5 + k * 0.1));
+  flying.remove();
+  if (my !== gen) return;
+  if (stage.works) {
+    await hz.win(ctx);
+    setFace(hero, 'happy'); setArms(hero, 'up');
+  } else {
+    const key = stage.hazard + ':' + stage.item;
+    if (!save.album[key] && ENDINGS.some((e) => e.key === key)) { save.album[key] = 1; save.coins += albumCoins(); writeSave(); }
+    await hz.fails[hz.wrong[stage.item]].call(hz, ctx);
+  }
+  if (my !== gen) return;
+  if (right) { level.right++; sfx.coin(); confetti(20); } else sfx.lose();
+  stamp(right ? t('bonus.right') : t('bonus.wrong'), right);
+  await wait(1.2);
+  if (my !== gen) return;
+  $('stamp').hidden = true;
+  stageIdx++;
+  if (stageIdx < level.stages.length) { buildStage(); return; }
+  state = 'won';
+  const coins = Math.round(level.right * 25 * coinMult()) + (level.right === 3 ? 25 : 0);
+  save.coins += coins;
+  writeSave();
+  track('bonus_done', { right: level.right });
+  $('won-title').textContent = t('bonus.done');
+  $('won-line').textContent = t('bonus.score', { n: level.right });
+  $('won-coins').textContent = '+' + coins;
+  $('won-stars').hidden = true;
+  $('won-streak').hidden = true;
+  $('btn-next').textContent = t('next');
+  $('btn-won-home').hidden = false;
+  updateCoins();
+  showScreen('screen-won');
+}
+
 function stamp(text, good) {
   const s = $('stamp');
   s.textContent = text;
-  s.className = 'stamp' + (good ? ' good' : '');
+  s.className = 'stamp' + (good ? ' good' : '') + (text.length > 6 ? ' long' : '');
   s.hidden = false;
   s.style.animation = 'none';
   void s.offsetWidth;
@@ -469,6 +547,9 @@ async function lost(type, fresh = false, tool = '') {
   $('lost-line').textContent = (tool && joke(stage.hazard, tool, getLang())) || t('fail.' + type);
   $('btn-revive').hidden = level.n === 0 || run.revived;
   $('lost-new').hidden = !fresh;
+  const tip = !save.tipHint && level.mode === 'level' && level.n > 0;
+  $('lost-tip').hidden = !tip;
+  if (tip) { save.tipHint = 1; writeSave(); }
   $('lost-new').textContent = t('album.new', { c: albumCoins() });
   const sc = $('lost-score');
   sc.hidden = level.mode !== 'endless';
@@ -494,7 +575,8 @@ async function won() {
   if (run.revived) stars = 1;
   const today = dayKey(new Date());
   const dailyFirst = level.mode === 'daily' && save.dailyCh !== today;
-  const reward = Math.round((level.mode === 'daily' ? (dailyFirst ? 100 : 0) : level.n === 0 ? 20 : 10 + Math.floor(level.n * 1.5) + stars * 5) * (level.n === 0 ? 1 : coinMult()));
+  let reward = Math.round((level.mode === 'daily' ? (dailyFirst ? 100 : 0) : level.n === 0 ? 20 : 10 + Math.floor(level.n * 1.5) + stars * 5) * (level.n === 0 ? 1 : coinMult()));
+  if (level.boss) reward *= 2;
   let streakPct = 0;
   if (level.mode === 'level' && level.n > 0) { save.streak = (save.streak || 0) + 1; streakPct = Math.min(50, (save.streak - 1) * 10); }
   const bonus = Math.round(reward * streakPct / 100);
@@ -559,7 +641,7 @@ async function startIntro() {
 // ---------------------------------------------------------------- UI
 function levelChip() {
   if (!level) return;
-  let txt = introAd ? t('intro.hud') : level.mode === 'endless' ? `${t('endless')} · ${level.score}` : level.mode === 'daily' ? t('daily.ch') : level.n === 0 ? t('intro.real') : t('level', { n: level.n });
+  let txt = introAd ? t('intro.hud') : level.mode === 'endless' ? `${t('endless')} · ${level.score}` : level.mode === 'daily' ? t('daily.ch') : level.mode === 'bonus' ? t('bonus') : level.boss ? 'BOSS' : level.n === 0 ? t('intro.real') : t('level', { n: level.n });
   if (level.stages.length > 1 && level.mode !== 'endless') txt += ' · ' + t('stage', { a: stageIdx + 1, b: level.stages.length });
   $('hud-level').textContent = txt;
 }
@@ -664,7 +746,7 @@ function renderMap() {
     const cls = n < cur ? 'done' : n === cur ? 'now' : 'lock';
     const st = save.stars[n] || 0;
     const multi = levelSpec(n).stages.length;
-    const chest = n % 10 === 0 && !save.chests[n] ? '<span class="chest">🎁</span>' : '';
+    const chest = n % 10 === 0 && !save.chests[n] ? '<span class="chest">🎁</span>' : isBoss(n) ? '<span class="chest">👑</span>' : '';
     html += `<div class="node ${cls}">${chest || (multi > 1 ? `<span class="boss">×${multi}</span>` : '')}<b>${n}</b><i>${n < cur ? '★'.repeat(st) + '☆'.repeat(3 - st) : ''}</i></div>`;
   }
   $('map').innerHTML = html;
@@ -778,7 +860,12 @@ function renderSettings() {
 const on = (id, fn) => $(id).addEventListener('click', (e) => { e.stopPropagation(); unlockAudio(); fn(); });
 on('btn-play', () => { sfx.tap(); if (!save.seenIntro && save.level <= 1) startIntro(); else startLevel(save.level); });
 on('btn-intro-go', () => { sfx.tap(); save.seenIntro = 1; writeSave(); startLevel(0); });
-const afterWin = (home) => { if (home || level.mode === 'daily') goHome(); else startLevel(level.n === 0 ? 1 : level.n + 1); };
+const afterWin = (home) => {
+  if (home || level.mode === 'daily') return goHome();
+  if (level.mode === 'bonus') return startLevel(level.next);
+  if (level.mode === 'level' && level.n > 0 && level.n % 7 === 0 && !level.boss) return startLevel(-3, bonusSpec(level.n));
+  startLevel(level.n === 0 ? 1 : level.n + 1);
+};
 let chestThen = null;
 function openChestScreen(then) {
   chestThen = then;
@@ -893,7 +980,29 @@ function frame(now) {
       $('timer').firstElementChild.style.transform = `scaleX(${left})`;
       $('timer').classList.toggle('low', left < 0.3);
       if (stage.twist && !twistDone && left < 0.55) runTwist();
-      if (left <= 0) timeUp();
+      if (level.mode !== 'bonus') {
+        if (left < 0.35) {
+          const sec = Math.ceil(stage.time - stageT);
+          if (sec !== lastTick) { lastTick = sec; sfx.tick(); }
+          sweatT -= dt;
+          if (sweatT <= 0 && hero && hero.style.display !== 'none') {
+            sweatT = 0.45;
+            const [hx, hy] = heroXY();
+            const d = el('path', { d: 'M0 -8 q6 9 0 12 q-6 -3 0 -12 Z', fill: '#7fd3ff', stroke: '#2b2140', 'stroke-width': 2 });
+            fxG.appendChild(d);
+            const side = Math.random() < 0.5 ? -1 : 1;
+            parts.push({ node: d, x: hx + side * 26, y: hy - 136, vx: side * 30, vy: -40, life: 0.6, age: 0, grav: 300 });
+          }
+        }
+        if (left <= 0) timeUp();
+      }
+      blinkT -= dt;
+      if (blinkT <= 0 && hero) {
+        blinkT = 2.5 + Math.random() * 2;
+        const f = hero.face;
+        f.setAttribute('transform', 'translate(0 -117) scale(1 0.12) translate(0 117)');
+        setTimeout(() => f.removeAttribute('transform'), 110);
+      }
     }
   }
   for (let i = parts.length - 1; i >= 0; i--) {
@@ -936,6 +1045,8 @@ window.__choices = {
   get level() { return level; },
   get stage() { return stage; },
   get save() { return save; },
+  bonus: (n) => startLevel(-3, bonusSpec(n)),
+  guess: (y) => guess(y),
   setEvent: (e) => { eventId = e; updateHints(); },
   goHome: () => goHome(),
   setSpeed: (s) => (speed = s),

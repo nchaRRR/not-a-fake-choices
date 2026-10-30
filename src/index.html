@@ -76,6 +76,7 @@
            font-family: var(--font-display); font-weight: 800; font-size: clamp(64px, 22vw, 120px); line-height: 1; color: var(--red);
            -webkit-text-stroke: 7px #fff; paint-order: stroke fill; border: 10px solid var(--red); border-radius: 26px; padding: 6px 26px 0; background: rgba(255, 255, 255, 0.85);
            animation: stamp 0.35s cubic-bezier(.2,1.6,.4,1) both; }
+  .stamp.long { font-size: clamp(40px, 12vw, 72px); white-space: nowrap; }
   .stamp.good { color: var(--green); border-color: var(--green); font-size: clamp(48px, 15vw, 84px); }
   @keyframes stamp { from { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(2.4); } to { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1); } }
 
@@ -219,6 +220,16 @@
   #chest-icon { font-size: 96px; line-height: 1; display: block; animation: wobble 0.9s ease-in-out infinite; }
   #chest-icon.open { animation: newtag 0.4s cubic-bezier(.2,1.6,.4,1) both; }
   @keyframes wobble { 25% { transform: rotate(-8deg) scale(1.05); } 75% { transform: rotate(8deg) scale(1.05); } }
+
+  .item-card { cursor: default; background: #fff2b8; }
+  .guess { border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 5px 0 var(--ink); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+           font: 800 46px/1 var(--font-display); color: #fff; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; }
+  .guess small { font: 800 15px/1.1 var(--font-body); -webkit-text-stroke: 0; color: #fff; text-align: center; padding: 0 4px; }
+  .guess.yes { background: var(--green); }
+  .guess.no { background: var(--red); }
+  .guess:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+  .guess.dim { opacity: 0.35; }
+  .tip-line { font-size: 15px !important; background: #fff2b8; border: 2px dashed var(--gold-deep); border-radius: 12px; padding: 6px 10px; color: var(--ink) !important; }
 </style>
 
 <svg id="stage" viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene">
@@ -299,6 +310,7 @@
     <span class="new-tag" id="lost-new" hidden></span>
     <p id="lost-line" class="fail-joke"></p>
     <p id="lost-score" class="score-line" hidden></p>
+    <p id="lost-tip" class="tip-line" data-i18n="tip.hint" hidden></p>
     <button class="btn btn-gold" id="btn-revive" type="button"><span data-i18n="revive">Watch an ad, try this part again</span></button>
     <button class="btn btn-big btn-green" id="btn-retry" type="button" data-i18n="retry">Try again</button>
     <button class="btn btn-plain" id="btn-lost-home" type="button" data-i18n="home">Home</button>
