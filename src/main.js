@@ -53,7 +53,7 @@ function rng(seed) {
 // The order the dangers come in. Levels 1-35 each bring one new danger, easiest first; extra stages
 // in multi-stage levels reuse dangers already met. After that it's a mix where none of the last ten
 // dangers comes back.
-const INTRO = ['fire', 'shark', 'bear', 'cold', 'desert', 'thief', 'bees', 'flood', 'ghost', 'bomb', 'dragon', 'vampire', 'gorilla', 'meteor', 'dino', 'lava', 'mice', 'snake', 'tornado', 'zombie', 'lion', 'spider', 'carsink', 'alien', 'boulder', 'airballoon', 'witch', 'robot', 'bull', 'skunk', 'avalanche', 'quicksand', 'tsunami', 'lightning', 'piranha'].filter((id) => HAZARDS[id]);
+const INTRO = ['fire', 'shark', 'bear', 'cold', 'desert', 'thief', 'bees', 'flood', 'ghost', 'bomb', 'dragon', 'vampire', 'gorilla', 'meteor', 'grease', 'dino', 'lava', 'mice', 'snake', 'ghostbaby', 'tornado', 'zombie', 'lion', 'sleepbear', 'spider', 'carsink', 'alien', 'thiefbone', 'boulder', 'airballoon', 'witch', 'electric', 'robot', 'bull', 'skunk', 'vampsun', 'avalanche', 'quicksand', 'tsunami', 'lightning', 'piranha'].filter((id) => HAZARDS[id]);
 for (const id of HAZARD_IDS) if (!INTRO.includes(id)) INTRO.push(id);
 const isBoss = (n) => n >= 25 && n % 25 === 0;
 const stageCount = (n) => (isBoss(n) ? 4 : n >= 30 && n % 5 === 0 ? 3 : n >= 12 && n % 3 === 0 ? 2 : 1);
@@ -102,7 +102,7 @@ export function levelSpec(n) {
 }
 // Silly items that never save anyone; mixed in as wrong answers so the same danger looks different.
 const DECOYS = ['teddy', 'broccoli', 'icecream', 'ketchup', 'cheese', 'flower', 'drum', 'paper', 'sponge', 'candle', 'salt', 'clothespin', 'garlic', 'kite'];
-const DECOY_SKIP = { cold: ['candle', 'salt'], avalanche: ['salt'], fire: ['sponge'], bomb: ['sponge'], tornado: ['kite'], alien: ['kite'] };
+const DECOY_SKIP = { grease: ['salt'], cold: ['candle', 'salt'], avalanche: ['salt'], fire: ['sponge'], bomb: ['sponge'], tornado: ['kite'], alien: ['kite'] };
 function makeStage(id, r, choices, time, decoy = 0) {
   const hz = HAZARDS[id];
   const wrongs = Object.keys(hz.wrong);
@@ -320,6 +320,7 @@ let paused = false;
 let lastTick = 0;
 let sweatT = 0;
 let blinkT = 2;
+let ambT = 0;
 let pendingChest = 0;
 let run = { fracs: [], hint: false, revived: false };
 
@@ -364,6 +365,8 @@ function buildStage(quiet = false) {
   ctx = makeCtx(layer);
   hz.setup(ctx);
   stageT = 0;
+  ambT = 0.4;
+  if (!quiet) { const st = $('stage'); st.classList.remove('enter'); void st.getBoundingClientRect(); st.classList.add('enter'); }
   stage.time = stage.baseTime ? stage.baseTime * timeMult() : (stage.baseTime = stage.time) * timeMult();
   state = 'choose';
   levelChip();
@@ -381,6 +384,7 @@ function buildStage(quiet = false) {
     b.className = 'choice';
     b.dataset.tool = id;
     b.innerHTML = toolSvg(id);
+    b.style.setProperty('--i', box.childElementCount);
     b.addEventListener('click', () => pick(id, b));
     box.appendChild(b);
   });
@@ -395,7 +399,7 @@ function buildStage(quiet = false) {
   }
   if (level.mode === 'bonus' && !quiet) { setArms(hero, 'hold'); say('?'); }
   else if (level.n === 1 && stageIdx === 0 && !introAd && !quiet) say(t('quick'));
-  else if (stage.isNew && !quiet && !introAd) say(t('new.hazard'));
+  else if (stage.isNew && !quiet && !introAd) say(HAZARDS[stage.hazard].trick ? t('trick.new') : t('new.hazard'));
   else if (stage.twist && !quiet) say(t('twist.' + stage.twist));
 }
 
@@ -437,6 +441,7 @@ function runTwist() {
 
 async function pick(id, btn) {
   if (state !== 'choose' || (introAd && !btn.dataset.auto)) return;
+  $('danger').setAttribute('opacity', 0);
   unlockAudio();
   state = 'acting';
   const my = gen;
@@ -451,6 +456,7 @@ async function pick(id, btn) {
   await T(0.35, (k) => place(flying, 200 + (hx + 40 - 200) * ease(k), 560 + (hy - 130 - 560) * ease(k) - Math.sin(k * Math.PI) * 40, k * 360, 0.5 + k * 0.1));
   flying.remove();
   if (my !== gen) return;
+  btn.classList.add(id === hz.correct ? 'right' : 'wrong');
   if (id === hz.correct) {
     save.st.saves++;
     run.fracs.push(Math.max(0, 1 - stageT / stage.time));
@@ -458,9 +464,13 @@ async function pick(id, btn) {
     if (my !== gen) return;
     setFace(hero, 'happy');
     setArms(hero, 'up');
+    if (hero.style.display !== 'none') {
+      const [hx2, hy2] = heroXY();
+      T(0.45, (k) => hero.setAttribute('transform', `translate(${hx2} ${hy2 - Math.sin(k * Math.PI) * 34}) scale(${1 + Math.sin(k * Math.PI) * 0.06} ${1 - Math.sin(k * Math.PI) * 0.04})`));
+    }
     sfx.win();
     confetti(30);
-    stamp(t('saved'), true);
+    stamp(hz.trick ? t('trick.saved') : t('saved'), true);
     await T(1.1, (k) => setArms(hero, 'up', Math.sin(k * Math.PI * 6) * 14));
     if (my !== gen) return;
     $('stamp').hidden = true;
@@ -581,6 +591,20 @@ async function lost(type, fresh = false, tool = '') {
   showScreen('screen-lost');
 }
 
+function countUp(elx, total) {
+  const my = gen;
+  elx.textContent = '+0';
+  const steps = Math.min(20, total);
+  let i = 0;
+  const tick = () => {
+    if (my !== gen) { elx.textContent = '+' + total; return; }
+    i++;
+    elx.textContent = '+' + Math.round((total * i) / steps);
+    if (i % 2 === 0) sfx.coin();
+    if (i < steps) setTimeout(tick, 32);
+  };
+  setTimeout(tick, 250);
+}
 async function won() {
   state = 'won';
   const my = gen;
@@ -616,7 +640,7 @@ async function won() {
   $('btn-next').textContent = daily ? t('home') : t('next');
   $('btn-won-home').hidden = daily;
   buzz(25);
-  $('won-coins').textContent = '+' + (reward + bonus);
+  countUp($('won-coins'), reward + bonus);
   $('won-streak').hidden = streakPct <= 0;
   $('won-streak').textContent = t('won.streak', { n: save.streak, p: streakPct });
   updateCoins();
@@ -700,7 +724,7 @@ function goHome() {
 }
 
 // fail album
-const HZ_ICON = { lava: '🌋', shark: '🦈', bees: '🐝', fire: '🔥', bear: '🐻', ghost: '👻', cold: '❄️', flood: '🌊', bomb: '💣', thief: '🦹', dragon: '🐉', vampire: '🧛', desert: '🏜️', meteor: '☄️', dino: '🦖', snake: '🐍', alien: '🛸', tornado: '🌪️', carsink: '🚗', airballoon: '🎈', boulder: '🪨', spider: '🕷️', mice: '🐭', zombie: '🧟', lion: '🦁', gorilla: '🦍', witch: '🧙', robot: '🤖', bull: '🐂', avalanche: '🏔️', quicksand: '⏳', tsunami: '🌊', skunk: '🦨', lightning: '⚡', piranha: '🐟' };
+const HZ_ICON = { lava: '🌋', shark: '🦈', bees: '🐝', fire: '🔥', bear: '🐻', ghost: '👻', cold: '❄️', flood: '🌊', bomb: '💣', thief: '🦹', dragon: '🐉', vampire: '🧛', desert: '🏜️', meteor: '☄️', dino: '🦖', snake: '🐍', alien: '🛸', tornado: '🌪️', carsink: '🚗', airballoon: '🎈', boulder: '🪨', spider: '🕷️', mice: '🐭', zombie: '🧟', lion: '🦁', gorilla: '🦍', witch: '🧙', robot: '🤖', bull: '🐂', avalanche: '🏔️', quicksand: '⏳', tsunami: '🌊', skunk: '🦨', lightning: '⚡', piranha: '🐟', grease: '🍳', electric: '🔌', sleepbear: '😴', vampsun: '☀️', thiefbone: '🦴', ghostbaby: '👶' };
 const albumCount = () => ENDINGS.filter((e) => save.album[e.key]).length;
 function renderAlbum() {
   const got = albumCount();
@@ -1152,6 +1176,10 @@ function frame(now) {
       $('timer').firstElementChild.style.transform = `scaleX(${left})`;
       $('timer').classList.toggle('low', left < 0.3);
       if (stage.twist && !twistDone && left < 0.55) runTwist();
+      ambT -= dt;
+      if (ambT <= 0) { ambT = 2.2 + Math.random() * 0.8; if (hz.amb) sfx.amb(hz.amb); }
+      const dangerV = level.mode !== 'bonus' && left < 0.35 ? ((0.35 - left) / 0.35) * (0.45 + Math.sin(stageT * 10) * 0.15) : 0;
+      $('danger').setAttribute('opacity', dangerV.toFixed(2));
       if (level.mode !== 'bonus') {
         if (left < 0.35) {
           const sec = Math.ceil(stage.time - stageT);
@@ -1195,6 +1223,7 @@ function frame(now) {
 
 async function timeUp() {
   if (state !== 'choose') return;
+  $('danger').setAttribute('opacity', 0.5);
   state = 'acting';
   const my = gen;
   for (const b of $('choices').children) { b.disabled = true; b.classList.add('dim'); }

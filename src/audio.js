@@ -159,6 +159,36 @@ export const sfx = {
     tone(990, 0.14, 'triangle', 0.1, 0, 0.07);
   },
   tap: () => tone(460, 0.05, 'triangle', 0.07),
+  // Quiet background cues, one every couple of seconds while a danger waits (see main.js).
+  amb: (kind) => {
+    switch (kind) {
+      case 'crackle': for (let i = 0; i < 4; i++) tone(1800 + Math.random() * 1600, 0.02, 'square', 0.015, -800, Math.random() * 0.5); noise(0.25, 0.03); break;
+      case 'wave': whoosh(1.1, 0.05, 300, 900); break;
+      case 'wind': whoosh(1.4, 0.05, 900, 300); break;
+      case 'buzz': tone(220, 0.8, 'sawtooth', 0.02, 20); tone(231, 0.8, 'sawtooth', 0.015, -15); break;
+      case 'growl': tone(70, 0.6, 'sawtooth', 0.05, -15); break;
+      case 'wail': tone(500, 0.9, 'sine', 0.03, 260); break;
+      case 'bubble': for (let i = 0; i < 3; i++) tone(300 + Math.random() * 300, 0.06, 'sine', 0.04, 400, i * 0.18); break;
+      case 'fuse': noise(0.4, 0.025); tone(2600, 0.05, 'square', 0.01, -400, 0.2); break;
+      case 'steps': tone(120, 0.05, 'triangle', 0.06, -40); tone(110, 0.05, 'triangle', 0.06, -40, 0.32); break;
+      case 'rumble': tone(48, 0.9, 'sine', 0.08, -10); noise(0.6, 0.03); break;
+      case 'stomp': tone(60, 0.18, 'sine', 0.12, -20); break;
+      case 'hiss': whoosh(0.6, 0.04, 4000, 6000); break;
+      case 'ufo': tone(600, 0.8, 'sine', 0.03, 300); tone(605, 0.8, 'sine', 0.03, -300); break;
+      case 'squeak': tone(2200, 0.05, 'sine', 0.04, 600); tone(2400, 0.05, 'sine', 0.04, 600, 0.12); break;
+      case 'drum': tone(90, 0.1, 'sine', 0.12, -30); tone(90, 0.1, 'sine', 0.12, -30, 0.14); tone(90, 0.1, 'sine', 0.12, -30, 0.28); break;
+      case 'beep': tone(880, 0.06, 'square', 0.03); tone(660, 0.06, 'square', 0.03, 0, 0.12); break;
+      case 'snort': noise(0.2, 0.05); tone(150, 0.15, 'sawtooth', 0.03, -60); break;
+      case 'thunder': tone(40, 1.2, 'sine', 0.1, -10); noise(1, 0.05); break;
+      case 'sizzle': noise(0.7, 0.04); for (let i = 0; i < 5; i++) tone(3000 + Math.random() * 2000, 0.02, 'square', 0.01, 0, Math.random() * 0.6); break;
+      case 'zap': tone(120, 0.15, 'sawtooth', 0.04, 60); tone(2400, 0.04, 'square', 0.02, -1200, 0.1); break;
+      case 'snore': tone(90, 0.7, 'sawtooth', 0.03, 30); break;
+      case 'cry': tone(700, 0.4, 'triangle', 0.03, -200); tone(650, 0.5, 'triangle', 0.03, -200, 0.5); break;
+      case 'cackle': for (let i = 0; i < 4; i++) tone(900 - i * 60, 0.07, 'square', 0.02, -100, i * 0.1); break;
+      case 'splash': noise(0.15, 0.04); break;
+      default: break;
+    }
+  },
   roar: () => {
     tone(110, 0.7, 'sawtooth', 0.12, -50);
     tone(82, 0.8, 'square', 0.06, -30, 0.05);

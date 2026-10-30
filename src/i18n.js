@@ -122,7 +122,9 @@ const STRINGS = {
     'bonus.q': 'Will it work? You call it!', 'bonus.yes': 'It works', 'bonus.no': 'Nope',
     'bonus.right': 'CALLED IT!', 'bonus.wrong': 'NOPE!', 'bonus.done': 'Bonus round done!', 'bonus.score': 'You called {n} of 3 right.',
     'tip.hint': '💡 Stuck? Tap the bulb at the top: the right card starts glowing.',
+    'trick.saved': 'NOT FOOLED!', 'trick.new': 'Look closely…',
     'new.hazard': 'New danger!', 'twist.mystery': 'Mystery card!', 'twist.swap': 'Watch the cards!',
+    'fail.wake': 'Good morning, bear.', 'fail.wail': 'Too loud.',
     'fail.toss': 'Yeet.', 'fail.frog': 'Ribbit.', 'fail.zap': 'Shocking.', 'fail.gored': 'Airborne.', 'fail.buried': 'Snowed in.', 'fail.sunk': 'Gone. Just gone.', 'fail.washed': 'Surf\'s up. He is not.', 'fail.stink': 'Pee-yoo.', 'fail.nibbled': 'Nom nom.',
     'won.streak': '🔥 {n} in a row · +{p}% coins',
     homepage: 'Home', 'shop.pets': 'Pets', 'set.vibe': 'Vibration',
@@ -273,7 +275,9 @@ const STRINGS = {
     'bonus.q': 'İşe yarar mı? Sen bil!', 'bonus.yes': 'İşe yarar', 'bonus.no': 'Yaramaz',
     'bonus.right': 'BİLDİN!', 'bonus.wrong': 'BİLEMEDİN!', 'bonus.done': 'Bonus tur bitti!', 'bonus.score': '3 tahminden {n} tanesi doğru.',
     'tip.hint': '💡 Takıldın mı? Üstteki ampule dokun, doğru kart parlasın.',
+    'trick.saved': 'KANMADIN!', 'trick.new': 'İyi bak…',
     'new.hazard': 'Yeni tehlike!', 'twist.mystery': 'Gizli kart!', 'twist.swap': 'Kartlara dikkat!',
+    'fail.wake': 'Günaydın ayıcık.', 'fail.wail': 'Çok gürültülü.',
     'fail.toss': 'Fırlatıldı.', 'fail.frog': 'Vrak.', 'fail.zap': 'Çarpıldı.', 'fail.gored': 'Havalandı.', 'fail.buried': 'Kara gömüldü.', 'fail.sunk': 'Gitti. Öylece gitti.', 'fail.washed': 'Dalga geldi, o gitti.', 'fail.stink': 'Pöff.', 'fail.nibbled': 'Ham ham.',
     'won.streak': '🔥 Üst üste {n} · +%{p} altın',
     homepage: 'Ana sayfa', 'shop.pets': 'Evcil hayvanlar', 'set.vibe': 'Titreşim',
@@ -306,8 +310,8 @@ const STRINGS = {
 
 // Words the hero and the monsters shout, written once in the scene code (in either language).
 const SAYS = {
-  en: { 'BÖÖ!': 'BOO!', 'ISIRDI!': 'CHOMP!', 'SU...': 'WATER...', 'OH BE!': 'AHHH!', 'IYY!': 'EWW!', 'HAV HAV!': 'WOOF!', 'ŞAK!': 'WHACK!', 'MİYAV!': 'MEOW!', 'İİİK!': 'EEEK!', 'BEYİİN!': 'BRAINS!', 'KRAK!': 'CRACK!', 'YIHUU!': 'WHEEE!', 'ERİYORUM!': 'I\'M MELTING!', 'VRAK!': 'RIBBIT!', 'ÇEK!': 'PULL!', 'MİS!': 'FRESH!', 'PÖFF!': 'PEE-YOO!', 'UH UH!': 'OOH OOH!' },
-  tr: { 'POF!': 'PUF!', 'AUU!': 'AYY!', 'CHOMP!': 'HAM!', 'BYE!': 'GÜLE GÜLE!', 'WHOOO!': 'UÇUYORUM!', 'AAAA!': 'AAAA!', 'Quick!': 'Çabuk!', 'BLUP!': 'BLUP!', 'NOM NOM!': 'HAM HAM!', 'UGH!': 'UGH!', 'OLE!': 'OLE!' },
+  en: { 'BÖÖ!': 'BOO!', 'ISIRDI!': 'CHOMP!', 'SU...': 'WATER...', 'OH BE!': 'AHHH!', 'IYY!': 'EWW!', 'HAV HAV!': 'WOOF!', 'ŞAK!': 'WHACK!', 'MİYAV!': 'MEOW!', 'İİİK!': 'EEEK!', 'BEYİİN!': 'BRAINS!', 'KRAK!': 'CRACK!', 'YIHUU!': 'WHEEE!', 'ERİYORUM!': 'I\'M MELTING!', 'VRAK!': 'RIBBIT!', 'ÇEK!': 'PULL!', 'MİS!': 'FRESH!', 'PÖFF!': 'PEE-YOO!', 'UH UH!': 'OOH OOH!', 'KLİK!': 'CLICK!', 'ŞŞŞ...': 'SHHH...', 'FIIIT!': 'TWEET!', 'UAAAA!': 'WAAAH!' },
+  tr: { 'POF!': 'PUF!', 'AUU!': 'AYY!', 'CHOMP!': 'HAM!', 'BYE!': 'GÜLE GÜLE!', 'WHOOO!': 'UÇUYORUM!', 'AAAA!': 'AAAA!', 'Quick!': 'Çabuk!', 'BLUP!': 'BLUP!', 'NOM NOM!': 'HAM HAM!', 'UGH!': 'UGH!', 'OLE!': 'OLE!', 'GRRR!': 'GRRR!', 'PUF!': 'PUF!' },
 };
 export const sayWord = (text) => SAYS[lang][text] || text;
 

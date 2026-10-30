@@ -175,6 +175,36 @@ const J = {
     banana: ['Piranhas are not monkeys.', 'Piranalar maymun değil.'],
     ring: ['Floating is easy. Floating with piranhas is not.', 'Yüzmek kolay. Piranalarla yüzmek değil.'],
   },
+  grease: {
+    water: ['Water on an oil fire. Instant fireball.', 'Yağ yangınına su. Anında ateş topu.'],
+    ice: ['Ice in hot oil. The kitchen exploded.', 'Kızgın yağa buz. Mutfak havaya uçtu.'],
+    fan: ['Fanning an oil fire. Bold.', 'Yağ yangınını yelledi. Cesur.'],
+  },
+  electric: {
+    water: ['Water and electricity. Classic mistake.', 'Su ve elektrik. Klasik hata.'],
+    sponge: ['A wet sponge on a live socket. Zzzt.', 'Prize ıslak sünger. Zzzt.'],
+    fan: ['More air, more sparks.', 'Daha çok hava, daha çok kıvılcım.'],
+  },
+  sleepbear: {
+    honey: ['The bear smelled the honey. And him.', 'Ayı balın kokusunu aldı. Onun da.'],
+    drum: ['Drumming next to a sleeping bear. Brave.', 'Uyuyan ayının yanında davul. Cesur.'],
+    steak: ['Breakfast in bed. For the bear.', 'Yatağa kahvaltı. Ayıya.'],
+  },
+  vampsun: {
+    garlic: ['He was wearing garlic. It didn\'t work on him.', 'Boynunda sarımsak vardı. Ona işlemiyor.'],
+    ketchup: ['The vampire wanted the real thing.', 'Vampir ketçapla kandırılmadı.'],
+    teddy: ['The sun was right there. He picked a teddy.', 'Güneş tam oradaydı. O ayıcık seçti.'],
+  },
+  thiefbone: {
+    dog: ['The thief had a bone. The dog switched sides.', 'Hırsızın elinde kemik vardı. Köpek taraf değiştirdi.'],
+    cat: ['The cat watched the whole thing. Did nothing.', 'Kedi her şeyi izledi. Hiçbir şey yapmadı.'],
+    candle: ['Now the thief can see better. Thanks.', 'Hırsıza ışık tuttu. Sağ olsun.'],
+  },
+  ghostbaby: {
+    vacuum: ['Vacuuming a crying baby. Cold.', 'Ağlayan bebeği süpürmek. Soğuk.'],
+    candle: ['The baby ghost was scared of the dark. And of fire.', 'Bebek hayalet karanlıktan korkuyordu. Ateşten de.'],
+    mirror: ['It saw itself crying. Cried louder.', 'Aynada ağladığını gördü. Daha çok ağladı.'],
+  },
 };
 
 export function joke(hazard, tool, lang) {

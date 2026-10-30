@@ -192,6 +192,10 @@ export const TOOLS = {
   clothespin: `<path d="M38 10 L46 90 h10 L50 10 Z" fill="#e0b080" ${S}/><path d="M62 10 L54 90 h-10 L52 10 Z" fill="#d09860" ${S}/><rect x="38" y="44" width="24" height="12" rx="3" fill="#9aa6b8" ${S}/>`,
   boots: `<path d="M16 20 h22 v46 h14 q6 0 6 10 v12 h-42 Z" fill="#ffd34d" ${S}/><path d="M52 14 h22 v46 h14 q6 0 6 10 v12 h-42 Z" fill="#ffbe2e" ${S}/><path d="M16 34 h22 M52 28 h22" stroke="${INK}" stroke-width="3"/>`,
   plank: `<rect x="8" y="38" width="84" height="24" rx="4" fill="#c9893b" ${S}/><path d="M16 46 q20 -4 40 2 t30 0 M18 56 q24 4 50 -2" fill="none" stroke="#8a5a32" stroke-width="3"/><circle cx="16" cy="50" r="3" fill="${INK}"/><circle cx="84" cy="50" r="3" fill="${INK}"/>`,
+  lid: `<ellipse cx="50" cy="62" rx="40" ry="14" fill="#9aa6b8" ${S}/><path d="M12 60 Q50 20 88 60" fill="#c8d2e0" ${S}/><rect x="40" y="22" width="20" height="12" rx="5" fill="#2b2140"/><path d="M28 46 q10 -8 22 -10" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>`,
+  breaker: `<rect x="20" y="12" width="60" height="78" rx="8" fill="#dfe6ef" ${S}/><rect x="34" y="30" width="32" height="42" rx="6" fill="#2b2140"/><rect x="40" y="34" width="20" height="18" rx="4" fill="#e8453c"/><path d="M50 78 l-6 8 h12 Z" fill="#ffd34d" stroke="${INK}" stroke-width="2"/><text x="50" y="68" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="11" fill="#fff">OFF</text>`,
+  slippers: `<path d="M14 70 C14 50 24 40 34 40 C46 40 50 52 50 70 C50 84 14 84 14 70 Z" fill="#ff9ac8" ${S}/><path d="M18 58 Q32 44 48 58" fill="#fff" stroke="${INK}" stroke-width="3"/><path d="M52 62 C52 42 62 32 72 32 C84 32 88 44 88 62 C88 76 52 76 52 62 Z" fill="#ff9ac8" ${S}/><path d="M56 50 Q70 36 86 50" fill="#fff" stroke="${INK}" stroke-width="3"/>`,
+  whistle: `<path d="M20 44 h44 a22 22 0 1 1 -22 22 v-4 h-22 Z" fill="#c8d2e0" ${S}/><circle cx="64" cy="66" r="9" fill="#2b2140"/><path d="M20 44 v18" ${S}/><path d="M74 30 l10 -10 M82 40 l12 -4 M66 26 l2 -14" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`,
 };
 
 export function toolSvg(id, size = 100) {

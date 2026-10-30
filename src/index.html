@@ -295,11 +295,22 @@
   .toast.bad { background: var(--red); }
   .screen-dim { justify-content: flex-start; }
   .screen-dim > .card { margin-block: auto; flex: none; }
+  .choice { animation: cardIn 0.38s cubic-bezier(.2,1.5,.4,1) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(40px) scale(0.7); } to { opacity: 1; transform: none; } }
+  .choice.right { background: #c9f0d8; border-color: var(--green-deep); animation: cardOk 0.4s ease; }
+  .choice.wrong { background: #ffd5d0; border-color: var(--red); animation: cardBad 0.4s ease; }
+  .choice.right.dim, .choice.wrong.dim { opacity: 1; }
+  @keyframes cardOk { 50% { transform: scale(1.08); } }
+  @keyframes cardBad { 20% { transform: translateX(-8px) rotate(-3deg); } 40% { transform: translateX(8px) rotate(3deg); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
+  #stage.enter #scene { animation: sceneIn 0.4s ease both; }
+  @keyframes sceneIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
 
 <svg id="stage" viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene">
   <g id="scene"></g>
   <g id="fx"></g>
+  <defs><radialGradient id="dangerG" cx="50%" cy="50%" r="70%"><stop offset="0.55" stop-color="#e8453c" stop-opacity="0"/><stop offset="1" stop-color="#e8453c" stop-opacity="0.9"/></radialGradient></defs>
+  <rect id="danger" width="400" height="520" fill="url(#dangerG)" opacity="0" pointer-events="none"/>
   <rect id="flash" width="400" height="520" fill="#fff" opacity="0" pointer-events="none"/>
 </svg>
 
