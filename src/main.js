@@ -3,7 +3,8 @@
 // the hero before the bar runs out. Wrong picks end the way the ads always end.
 import { el, g, place, makeHero, setFace, setArms, paintHero, toolSvg, toolNode, OUTFITS, setOutfit, PETS, setPet } from './art.js';
 import { joke } from './jokes.js';
-import { showRewarded } from './ads.js';
+import { showRewarded, adPrivacy } from './ads.js';
+import { scheduleNotifications, askNotificationPermission } from './notify.js';
 import { storeLink, openLink } from './promo.js';
 import { createAccount } from './account.js';
 import { runOpening } from './opening.js';
@@ -604,6 +605,7 @@ async function won() {
   writeSave();
   track('level_win', { level: level.n });
   account.onRunEnd();
+  if (level.mode === 'level' && level.n === 3 && !save.notifAsked) { save.notifAsked = 1; writeSave(); setTimeout(() => askNotificationPermission(), 1500); }
   setTimeout(() => { if (state === 'won' && my === gen) account.maybeAsk(); }, 2400);
   await wait(0.3);
   if (my !== gen) return;
@@ -979,6 +981,8 @@ function renderSettings() {
   $('tg-sound').setAttribute('aria-checked', String(!save.muted));
   $('tg-music').setAttribute('aria-checked', String(save.music));
   $('tg-vibe').setAttribute('aria-checked', String(save.vibe));
+  $('tg-notify').setAttribute('aria-checked', String(save.notify !== false));
+  $('row-adprivacy').hidden = !(adPrivacy && adPrivacy.privacyRequired);
   $('btn-lang').textContent = getLang() === 'tr' ? 'Türkçe' : 'English';
 }
 const on = (id, fn) => $(id).addEventListener('click', (e) => { e.stopPropagation(); unlockAudio(); fn(); });
@@ -1080,6 +1084,11 @@ on('btn-account', () => { sfx.tap(); $('screen-settings').hidden = true; account
 on('btn-settings-close', () => { sfx.tap(); goHome(); });
 on('tg-sound', () => { save.muted = !save.muted; setMuted(save.muted); writeSave(); renderSettings(); sfx.tap(); });
 on('tg-vibe', () => { save.vibe = !save.vibe; writeSave(); renderSettings(); buzz(30); sfx.tap(); });
+on('tg-notify', () => { save.notify = save.notify === false; writeSave(); renderSettings(); sfx.tap(); if (save.notify) askNotificationPermission(); scheduleNotifications(save); });
+on('btn-adprivacy', () => { sfx.tap(); if (adPrivacy) adPrivacy.showPrivacyOptions(); });
+for (const id of ['link-privacy', 'link-support']) $(id).addEventListener('click', (e) => { e.preventDefault(); openLink($(id).href); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) scheduleNotifications(save); });
+window.addEventListener('pagehide', () => scheduleNotifications(save));
 on('tg-music', () => { save.music = !save.music; setMusicEnabled(save.music); if (save.music) startMusic(); writeSave(); renderSettings(); sfx.tap(); });
 on('btn-shop', () => { sfx.tap(); renderShop(); showScreen('screen-shop'); });
 on('btn-shop-close', () => { sfx.tap(); goHome(); });

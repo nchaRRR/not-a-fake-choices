@@ -1,0 +1,23 @@
+{
+  "appId": "com.nimoriq.nfachoices",
+  "appName": "NFA Choices",
+  "webDir": "dist/app",
+  "backgroundColor": "#ffe9d6",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#ffe9d6"
+  },
+  "android": {
+    "backgroundColor": "#ffe9d6",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover",
+      "hidden": true,
+      "style": "DARK"
+    }
+  }
+}

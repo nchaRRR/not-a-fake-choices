@@ -1,0 +1,26 @@
+{
+  "name": "nfa-choices",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pick the item that saves him: the game from the ads, actually playable",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "cap:sync": "npm run build && cap sync",
+    "android": "npm run cap:sync && cap open android",
+    "ios": "npm run cap:sync && cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/browser": "^8.0.0",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/local-notifications": "^8.0.0",
+    "@capacitor-community/admob": "^8.2.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
+    "esbuild": "0.24.2"
+  }
+}
