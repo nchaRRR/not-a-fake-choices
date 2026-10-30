@@ -45,6 +45,9 @@
   .choice:disabled { cursor: default; }
   .choice.picked { background: #fff2b8; }
   .choice.dim { opacity: 0.35; }
+  .choice.mystery { background: var(--lilac); }
+  .choice .q { font-family: var(--font-display); font-size: 64px; line-height: 1; color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; }
+  .choice.reveal svg { animation: newtag 0.35s cubic-bezier(.2,1.6,.4,1) both; }
   .choice.hint { animation: hintglow 0.8s ease-in-out infinite; }
   @keyframes hintglow { 50% { box-shadow: 0 0 0 6px var(--gold), 0 5px 0 var(--ink); } }
   .choice:focus-visible { outline: 3px solid var(--lilac); outline-offset: 3px; }
@@ -284,6 +287,7 @@
     <div class="stars" id="won-stars" aria-label="Stars"></div>
     <p id="won-line"></p>
     <div class="won-coins"><span class="coin-icon" aria-hidden="true"></span><span id="won-coins">+10</span></div>
+    <p id="won-streak" class="score-line" hidden></p>
     <button class="btn btn-big btn-green" id="btn-next" type="button" data-i18n="next">Next level</button>
     <button class="btn btn-plain" id="btn-won-home" type="button" data-i18n="homepage">Home</button>
   </div>

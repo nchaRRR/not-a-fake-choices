@@ -125,6 +125,56 @@ const J = {
     teddy: ['The lion wanted a real snack.', 'Aslan gerçek bir atıştırmalık istiyordu.'],
     flower: ['Romantic. The lion was not.', 'Romantik. Aslan değildi.'],
   },
+  gorilla: {
+    drum: ['The gorilla drums better. And throws farther.', 'Goril daha iyi davul çalıyor. Daha uzağa da atıyor.'],
+    mirror: ['The gorilla saw a rival. Bad timing.', 'Goril aynada rakip gördü. Kötü zamanlama.'],
+    broccoli: ['Even gorillas want the banana.', 'Goril bile muz istedi, brokoli değil.'],
+  },
+  witch: {
+    cat: ['The cat switched sides. Ribbit.', 'Kedi cadının tarafına geçti. Vrak.'],
+    candle: ['Perfect light for a spell. Ribbit.', 'Büyü için mükemmel ışık. Vrak.'],
+    broom: ['She already had a broom. Ribbit.', 'Cadının zaten süpürgesi vardı. Vrak.'],
+  },
+  robot: {
+    hammer: ['The robot was made of metal. Ouch.', 'Robot metaldendi. Çekiç değil, adam çarpıldı.'],
+    paper: ['A paper shield against 10,000 volts.', '10.000 volta karşı kâğıt kalkan.'],
+    teddy: ['Robots don\'t do hugs.', 'Robotlar sarılmayı sevmez.'],
+  },
+  bull: {
+    flower: ['The bull did not stop to smell it.', 'Boğa çiçeği koklamak için durmadı.'],
+    steak: ['Showing a bull a steak. Rude.', 'Boğaya biftek göstermek. Ayıp.'],
+    drum: ['The bull loved the beat. Charged to it.', 'Boğa ritmi sevdi. Ritimle saldırdı.'],
+  },
+  avalanche: {
+    umbrella: ['An umbrella vs a whole mountain of snow.', 'Bir şemsiye, koca bir dağ kara karşı.'],
+    fan: ['He blew the snow back. The snow won.', 'Kara üfledi. Kar kazandı.'],
+    sponge: ['The sponge soaked up exactly nothing.', 'Sünger hiçbir şey çekmedi.'],
+  },
+  quicksand: {
+    anchor: ['An anchor in quicksand. Express elevator down.', 'Bataklıkta çapa. Ekspres asansör: aşağı.'],
+    broccoli: ['Healthy. And deep underground.', 'Sağlıklı. Ve yerin dibinde.'],
+    skateboard: ['Skateboards don\'t work on sand.', 'Kaykay kumda gitmiyor.'],
+  },
+  tsunami: {
+    umbrella: ['That\'s a lot of water for an umbrella.', 'Bir şemsiye için fazla su.'],
+    sponge: ['The biggest sponge challenge ever. Lost.', 'Tarihin en büyük sünger sınavı. Kaybetti.'],
+    water: ['More water. Just what was missing.', 'Biraz daha su. Tam da eksik olan buydu.'],
+  },
+  skunk: {
+    flower: ['Flowers can\'t beat a skunk.', 'Çiçek kokarcayı yenemedi.'],
+    cheese: ['Old cheese plus skunk. A deadly combo.', 'Eski peynir artı kokarca. Ölümcül kombo.'],
+    fan: ['He fanned it straight at himself.', 'Kokuyu tam kendine yelledi.'],
+  },
+  lightning: {
+    umbrella: ['A metal stick in a storm. Shocking.', 'Fırtınada metal çubuk. Çarpıcı.'],
+    kite: ['Benjamin Franklin would be proud. And worried.', 'Benjamin Franklin gurur duyardı. Ve endişelenirdi.'],
+    sword: ['He raised a sword at the sky. The sky answered.', 'Gökyüzüne kılıç kaldırdı. Gökyüzü cevap verdi.'],
+  },
+  piranha: {
+    steak: ['He fed the piranhas. Then he was dessert.', 'Piranaları besledi. Tatlı da kendisiydi.'],
+    banana: ['Piranhas are not monkeys.', 'Piranalar maymun değil.'],
+    ring: ['Floating is easy. Floating with piranhas is not.', 'Yüzmek kolay. Piranalarla yüzmek değil.'],
+  },
 };
 
 export function joke(hazard, tool, lang) {

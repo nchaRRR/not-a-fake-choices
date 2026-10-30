@@ -51,6 +51,9 @@ const STRINGS = {
     'fail.mice': 'They brought friends.',
     'fail.zombie': 'He is on their team now.',
     'fail.lion': 'The lion wanted something else.',
+    'new.hazard': 'New danger!', 'twist.mystery': 'Mystery card!', 'twist.swap': 'Watch the cards!',
+    'fail.toss': 'Yeet.', 'fail.frog': 'Ribbit.', 'fail.zap': 'Shocking.', 'fail.gored': 'Airborne.', 'fail.buried': 'Snowed in.', 'fail.sunk': 'Gone. Just gone.', 'fail.washed': 'Surf\'s up. He is not.', 'fail.stink': 'Pee-yoo.', 'fail.nibbled': 'Nom nom.',
+    'won.streak': '🔥 {n} in a row · +{p}% coins',
     homepage: 'Home', 'shop.pets': 'Pets', 'set.vibe': 'Vibration',
     'pet.none': 'No pet', 'pet.chick': 'Chick', 'pet.dog': 'Dog', 'pet.cat': 'Cat', 'pet.parrot': 'Parrot',
     'chest.tag': 'Bonus', 'chest.title': 'Level {n} chest!', 'chest.open': 'Open', 'chest.go': 'Continue', 'chest.reward': '+{c} coins · +{h} hints',
@@ -128,6 +131,9 @@ const STRINGS = {
     'fail.mice': 'Arkadaşlarını da getirdiler.',
     'fail.zombie': 'Artık onların takımında.',
     'fail.lion': 'Aslan başka bir şey bekliyordu.',
+    'new.hazard': 'Yeni tehlike!', 'twist.mystery': 'Gizli kart!', 'twist.swap': 'Kartlara dikkat!',
+    'fail.toss': 'Fırlatıldı.', 'fail.frog': 'Vrak.', 'fail.zap': 'Çarpıldı.', 'fail.gored': 'Havalandı.', 'fail.buried': 'Kara gömüldü.', 'fail.sunk': 'Gitti. Öylece gitti.', 'fail.washed': 'Dalga geldi, o gitti.', 'fail.stink': 'Pöff.', 'fail.nibbled': 'Ham ham.',
+    'won.streak': '🔥 Üst üste {n} · +%{p} altın',
     homepage: 'Ana sayfa', 'shop.pets': 'Evcil hayvanlar', 'set.vibe': 'Titreşim',
     'pet.none': 'Hayvan yok', 'pet.chick': 'Civciv', 'pet.dog': 'Köpek', 'pet.cat': 'Kedi', 'pet.parrot': 'Papağan',
     'chest.tag': 'Bonus', 'chest.title': '{n}. bölüm sandığı!', 'chest.open': 'Aç', 'chest.go': 'Devam', 'chest.reward': '+{c} altın · +{h} ipucu',
@@ -158,8 +164,8 @@ const STRINGS = {
 
 // Words the hero and the monsters shout, written once in the scene code (in either language).
 const SAYS = {
-  en: { 'BÖÖ!': 'BOO!', 'ISIRDI!': 'CHOMP!', 'SU...': 'WATER...', 'OH BE!': 'AHHH!', 'IYY!': 'EWW!', 'HAV HAV!': 'WOOF!', 'ŞAK!': 'WHACK!', 'MİYAV!': 'MEOW!', 'İİİK!': 'EEEK!', 'BEYİİN!': 'BRAINS!', 'KRAK!': 'CRACK!', 'YIHUU!': 'WHEEE!' },
-  tr: { 'POF!': 'PUF!', 'AUU!': 'AYY!', 'CHOMP!': 'HAM!', 'BYE!': 'GÜLE GÜLE!', 'WHOOO!': 'UÇUYORUM!', 'AAAA!': 'AAAA!', 'Quick!': 'Çabuk!' },
+  en: { 'BÖÖ!': 'BOO!', 'ISIRDI!': 'CHOMP!', 'SU...': 'WATER...', 'OH BE!': 'AHHH!', 'IYY!': 'EWW!', 'HAV HAV!': 'WOOF!', 'ŞAK!': 'WHACK!', 'MİYAV!': 'MEOW!', 'İİİK!': 'EEEK!', 'BEYİİN!': 'BRAINS!', 'KRAK!': 'CRACK!', 'YIHUU!': 'WHEEE!', 'ERİYORUM!': 'I\'M MELTING!', 'VRAK!': 'RIBBIT!', 'ÇEK!': 'PULL!', 'MİS!': 'FRESH!', 'PÖFF!': 'PEE-YOO!', 'UH UH!': 'OOH OOH!' },
+  tr: { 'POF!': 'PUF!', 'AUU!': 'AYY!', 'CHOMP!': 'HAM!', 'BYE!': 'GÜLE GÜLE!', 'WHOOO!': 'UÇUYORUM!', 'AAAA!': 'AAAA!', 'Quick!': 'Çabuk!', 'BLUP!': 'BLUP!', 'NOM NOM!': 'HAM HAM!', 'UGH!': 'UGH!', 'OLE!': 'OLE!' },
 };
 export const sayWord = (text) => SAYS[lang][text] || text;
 

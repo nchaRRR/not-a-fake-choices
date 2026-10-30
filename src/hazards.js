@@ -771,6 +771,402 @@ export const HAZARDS = {
       },
     },
   },
+  // ================================================================ third batch
+  // ---------------------------------------------------------------- 26. gorilla
+  gorilla: {
+    correct: 'banana',
+    wrong: { drum: 'toss', mirror: 'toss', broccoli: 'toss' },
+    bg: () => sky('#8fd9a0', '#d8f4d0', 'go') + ground('#4a8a3a') + `
+      <path d="M40 0 q-10 120 10 220 M90 0 q14 90 -6 160 M330 0 q-12 100 8 180" fill="none" stroke="#2e7d4a" stroke-width="8" stroke-linecap="round"/>
+      <circle cx="60" cy="230" r="10" fill="#2eb872"/><circle cx="84" cy="160" r="10" fill="#2eb872"/><circle cx="338" cy="180" r="10" fill="#2eb872"/>
+      <g class="gor"><g class="g-arm-l"><rect x="-80" y="-120" width="26" height="100" rx="13" fill="#4a4a58" stroke="${INK}" stroke-width="4"/></g><g class="g-arm-r"><rect x="40" y="-120" width="26" height="100" rx="13" fill="#4a4a58" stroke="${INK}" stroke-width="4"/></g>
+        <ellipse cx="-6" cy="-70" rx="56" ry="62" fill="#4a4a58" stroke="${INK}" stroke-width="4"/><ellipse cx="-10" cy="-66" rx="32" ry="36" fill="#7a6a6a"/>
+        <rect x="-44" y="-24" width="28" height="26" rx="10" fill="#4a4a58" stroke="${INK}" stroke-width="4"/><rect x="6" y="-24" width="28" height="26" rx="10" fill="#4a4a58" stroke="${INK}" stroke-width="4"/>
+        <circle cx="-14" cy="-142" r="32" fill="#4a4a58" stroke="${INK}" stroke-width="4"/><ellipse cx="-22" cy="-134" rx="22" ry="18" fill="#9a8a7a" stroke="${INK}" stroke-width="3"/>
+        <circle cx="-30" cy="-150" r="4" fill="${INK}"/><circle cx="-12" cy="-150" r="4" fill="${INK}"/><path class="g-mouth" d="M-34 -126 q12 -6 24 0" fill="none" stroke="${INK}" stroke-width="3"/><path d="M-38 -156 l12 4 M-4 -156 l-12 4" stroke="${INK}" stroke-width="3"/></g>`,
+    setup(ctx) { place(ctx.hero, 120, 430); setArms(ctx.hero, 'up'); setFace(ctx.hero, 'scared'); },
+    gx: (t) => 390 - Math.min(110, t * 11),
+    idle(ctx, t) {
+      place(q(ctx, 'gor'), this.gx(t), 430);
+      const k = Math.sin(t * 12) * 10;
+      q(ctx, 'g-arm-l').setAttribute('transform', `rotate(${-40 + k} -67 -110)`);
+      q(ctx, 'g-arm-r').setAttribute('transform', `rotate(${40 - k} 53 -110)`);
+    },
+    async win(ctx) {
+      const x0 = this.gx(ctx.t());
+      const b = ctx.tool('banana', 150, 340, 0.45);
+      await ctx.T(0.5, (k) => place(b, 150 + (x0 - 190) * k, 340 - Math.sin(k * Math.PI) * 70 - k * 20, k * 360, 0.45));
+      q(ctx, 'g-arm-l').setAttribute('transform', 'rotate(0)'); q(ctx, 'g-arm-r').setAttribute('transform', 'rotate(0)');
+      q(ctx, 'g-mouth').setAttribute('d', 'M-36 -128 q14 12 28 0');
+      ctx.heart(x0 - 20, 240); ctx.say('UH UH!');
+      await ctx.T(0.8, (k) => place(q(ctx, 'gor'), x0, 430 + k * 14, 0, 1, 1 - k * 0.1));
+      b.dataset.keep = '1';
+    },
+    fails: {
+      async toss(ctx) {
+        const g0 = q(ctx, 'gor');
+        const x0 = this.gx(ctx.t());
+        ctx.sfx.roar(); ctx.shake();
+        await ctx.T(0.3, (k) => place(g0, x0 - k * (x0 - 200), 430));
+        ctx.say('UGH!'); ctx.faint();
+        await ctx.T(0.8, (k) => place(ctx.hero, 120 + k * 300, 430 - Math.sin(k * Math.PI) * 300 - k * 100, k * 720));
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- 27. witch on a broom
+  witch: {
+    correct: 'water',
+    wrong: { cat: 'frog', candle: 'frog', broom: 'frog' },
+    bg: () => sky('#2a1a4a', '#6a4a8a', 'wi') + ground('#3a3a4a') + `
+      <circle cx="80" cy="90" r="40" fill="#fff6d0"/>
+      <path d="M260 430 V340 L300 300 L340 340 V430 Z" fill="#4a3a5a" stroke="${INK}" stroke-width="4"/><rect x="288" y="350" width="24" height="24" fill="#ffd34d" stroke="${INK}" stroke-width="3"/>
+      <g class="witch"><path d="M-60 10 L50 -6" stroke="#8a5a32" stroke-width="7" stroke-linecap="round"/><path d="M40 -12 l30 -10 l-4 18 l6 14 Z" fill="#c9a06b" stroke="${INK}" stroke-width="3"/>
+        <path d="M-20 0 L0 -50 L20 0 Z" fill="#4a2a6a" stroke="${INK}" stroke-width="4"/><circle cy="-60" r="16" fill="#9adf6a" stroke="${INK}" stroke-width="4"/><path d="M-12 -62 q-16 6 -10 10" fill="#9adf6a" stroke="${INK}" stroke-width="3"/>
+        <path d="M-26 -70 h52 L4 -116 Z" fill="#2b2140" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><circle cx="-6" cy="-62" r="2.5" fill="${INK}"/><path d="M-8 -50 q6 3 12 0" stroke="${INK}" stroke-width="2" fill="none"/></g>
+      <g class="sparks"></g>`,
+    setup(ctx) { place(ctx.hero, 140, 430); setArms(ctx.hero, 'up'); setFace(ctx.hero, 'scared'); },
+    wpos: (t) => [220 + Math.cos(t * 1.4) * 110, 170 + Math.sin(t * 2.8) * 30, Math.sin(t * 1.4) > 0 ? 1 : -1],
+    idle(ctx, t) {
+      const [x, y, d] = this.wpos(t);
+      place(q(ctx, 'witch'), x, y, 0, -d, 1);
+      const sp = q(ctx, 'sparks');
+      if (sp.childElementCount < 6 && Math.random() < 0.15) sp.insertAdjacentHTML('beforeend', `<circle r="4" fill="#d9a0ff" cx="${x + 40 * d}" cy="${y}"/>`);
+      [...sp.children].forEach((c) => { c.setAttribute('cy', Number(c.getAttribute('cy')) + 1.5); if (Number(c.getAttribute('cy')) > 430) c.remove(); });
+    },
+    async win(ctx) {
+      const [x, y, d] = this.wpos(ctx.t());
+      const b = ctx.tool('water', 160, 330, 0.5);
+      await ctx.T(0.5, (k) => place(b, 160 + (x - 160) * k, 330 + (y - 330) * k - Math.sin(k * Math.PI) * 60, k * 300, 0.5));
+      b.remove();
+      ctx.splash(x, y);
+      ctx.say('ERİYORUM!');
+      const w = q(ctx, 'witch');
+      await ctx.T(0.9, (k) => place(w, x, y + k * 40, 0, -d * (1 - k * 0.3), 1 - k));
+      ctx.puff(x, y + 40, '#9adf6a', 12, 40);
+    },
+    fails: {
+      async frog(ctx) {
+        const [x, y] = this.wpos(ctx.t());
+        const bolt = el('path', { d: `M${x} ${y} L${(x + 140) / 2 + 20} ${(y + 360) / 2} L${(x + 140) / 2 - 10} ${(y + 360) / 2 + 10} L140 360`, stroke: '#d9a0ff', 'stroke-width': 8, fill: 'none', 'stroke-linejoin': 'round' });
+        ctx.layer.appendChild(bolt); ctx.flash('#d9a0ff'); ctx.sfx.whoosh();
+        await ctx.wait(0.25);
+        bolt.remove();
+        ctx.puff(140, 380, '#d9a0ff', 18, 60);
+        ctx.hero.style.display = 'none';
+        const frog = g({}, `<ellipse cy="-18" rx="26" ry="18" fill="#7cc35a" stroke="${INK}" stroke-width="4"/><circle cx="-12" cy="-36" r="9" fill="#7cc35a" stroke="${INK}" stroke-width="4"/><circle cx="12" cy="-36" r="9" fill="#7cc35a" stroke="${INK}" stroke-width="4"/><circle cx="-12" cy="-36" r="3" fill="${INK}"/><circle cx="12" cy="-36" r="3" fill="${INK}"/><path d="M-12 -14 q12 8 24 0" fill="none" stroke="${INK}" stroke-width="3"/><path d="M-18 -50 l6 -10 l6 10 Z" fill="#6b3f22"/>`);
+        place(frog, 140, 430);
+        ctx.layer.appendChild(frog);
+        ctx.say('VRAK!');
+        await ctx.T(0.6, (k) => place(frog, 140, 430 - Math.abs(Math.sin(k * Math.PI * 2)) * 30));
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- 28. robot
+  robot: {
+    correct: 'magnet',
+    wrong: { hammer: 'zap', paper: 'zap', teddy: 'zap' },
+    bg: () => sky('#9aa6b8', '#dfe6ef', 'rb') + ground('#6a7488') + `
+      <rect x="20" y="200" width="90" height="230" fill="#b5bfcc" stroke="${INK}" stroke-width="4"/><circle cx="65" cy="250" r="20" fill="#9aa6b8" stroke="${INK}" stroke-width="4"/><path d="M50 300 h30 M50 320 h30 M50 340 h30" stroke="${INK}" stroke-width="4"/>
+      <g class="robot"><g class="r-body"><rect x="-14" y="-40" width="12" height="40" fill="#9aa6b8" stroke="${INK}" stroke-width="4"/><rect x="8" y="-40" width="12" height="40" fill="#9aa6b8" stroke="${INK}" stroke-width="4"/>
+        <rect x="-40" y="-130" width="84" height="92" rx="10" fill="#c8d2e0" stroke="${INK}" stroke-width="4"/><circle cx="2" cy="-86" r="14" fill="#ffd34d" stroke="${INK}" stroke-width="3"/>
+        <path d="M-40 -110 L-80 -100 L-86 -80 M-90 -84 l8 -10 M-90 -76 l10 4" fill="none" stroke="${INK}" stroke-width="6" stroke-linecap="round"/>
+        <rect x="-26" y="-176" width="56" height="42" rx="8" fill="#c8d2e0" stroke="${INK}" stroke-width="4"/><path d="M2 -176 v-14" stroke="${INK}" stroke-width="4"/><circle cx="2" cy="-194" r="6" fill="#e8453c" stroke="${INK}" stroke-width="3"/>
+        <g class="r-eyes"><rect x="-18" y="-164" width="14" height="10" rx="3" fill="#e8453c"/><rect x="6" y="-164" width="14" height="10" rx="3" fill="#e8453c"/></g><path d="M-14 -144 h30" stroke="${INK}" stroke-width="3"/></g></g>`,
+    setup(ctx) { place(ctx.hero, 120, 430); setArms(ctx.hero, 'up'); setFace(ctx.hero, 'scared'); },
+    rx: (t) => 380 - Math.min(110, t * 11),
+    idle(ctx, t) { place(q(ctx, 'robot'), this.rx(t), 430, Math.sin(t * 8) * 2); q(ctx, 'r-eyes').style.opacity = Math.sin(t * 6) > -0.8 ? 1 : 0.2; },
+    async win(ctx) {
+      const x0 = this.rx(ctx.t());
+      const m = ctx.tool('magnet', 165, 330, 0.5);
+      setArms(ctx.hero, 'hold');
+      ctx.sfx.buzz();
+      for (let i = 0; i < 3; i++) { ctx.puff(x0, 280 + i * 30, '#ffd34d', 4, 40); await ctx.wait(0.15); }
+      q(ctx, 'r-eyes').innerHTML = `<path d="M-18 -164 l12 10 m0 -10 l-12 10 M6 -164 l12 10 m0 -10 l-12 10" stroke="${INK}" stroke-width="3"/>`;
+      ctx.say('BZZT!');
+      await ctx.T(0.6, (k) => place(q(ctx, 'robot'), x0, 430, k * 90));
+      ctx.sfx.boom(); ctx.shake(); ctx.puff(x0 + 80, 420, '#c8d2e0', 12, 50);
+      m.remove();
+    },
+    fails: {
+      async zap(ctx) {
+        const x0 = this.rx(ctx.t());
+        const bolt = el('path', { d: `M${x0 - 86} 350 L${x0 - 120} 330 L${x0 - 130} 360 L150 340`, stroke: '#ffd34d', 'stroke-width': 8, fill: 'none', 'stroke-linejoin': 'round' });
+        ctx.layer.appendChild(bolt); ctx.flash('#ffd34d'); ctx.sfx.buzz();
+        await ctx.wait(0.3);
+        bolt.remove();
+        ctx.burn();
+        await ctx.wait(0.3);
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- 29. charging bull
+  bull: {
+    correct: 'cape',
+    wrong: { flower: 'gored', steak: 'gored', drum: 'gored' },
+    bg: () => sky('#ffcf9a', '#fff0d8', 'bu') + ground('#e8c07a') + `
+      <path d="M0 330 h400 v30 h-400 Z" fill="#e8453c" stroke="${INK}" stroke-width="4"/><path d="M0 300 h400" stroke="${INK}" stroke-width="3"/>
+      <g fill="#ffbe2e" stroke="${INK}" stroke-width="3">${[30, 90, 150, 210, 270, 330, 390].map((x) => `<circle cx="${x}" cy="300" r="14"/>`).join('')}</g>
+      <g class="bull"><ellipse cx="20" cy="-60" rx="60" ry="38" fill="#6b3f22" stroke="${INK}" stroke-width="4"/>
+        <g fill="#6b3f22" stroke="${INK}" stroke-width="4"><rect x="-26" y="-36" width="14" height="36" rx="5"/><rect x="50" y="-36" width="14" height="36" rx="5"/></g>
+        <path d="M78 -76 q20 -10 18 20" fill="none" stroke="${INK}" stroke-width="5"/>
+        <ellipse cx="-44" cy="-74" rx="30" ry="26" fill="#6b3f22" stroke="${INK}" stroke-width="4"/><path d="M-60 -96 q-16 -20 -4 -30 M-30 -98 q8 -22 -6 -30" fill="none" stroke="#f6efe0" stroke-width="7" stroke-linecap="round"/>
+        <ellipse cx="-62" cy="-62" rx="14" ry="10" fill="#e0a088" stroke="${INK}" stroke-width="3"/><circle cx="-62" cy="-52" r="6" fill="none" stroke="#c9a06b" stroke-width="3"/><circle cx="-46" cy="-82" r="4" fill="${INK}"/><path d="M-54 -90 l12 4" stroke="${INK}" stroke-width="3"/></g>`,
+    setup(ctx) { place(ctx.hero, 140, 430); setArms(ctx.hero, 'up'); setFace(ctx.hero, 'scared'); },
+    bx: (t) => 360 - Math.min(40, t * 4),
+    idle(ctx, t) {
+      place(q(ctx, 'bull'), this.bx(t), 430 + Math.abs(Math.sin(t * 7)) * -3);
+      if (Math.random() < 0.04) ctx.puff(this.bx(t) - 80, 370, '#fff', 2, 20);
+    },
+    async win(ctx) {
+      const x0 = this.bx(ctx.t());
+      const c = ctx.tool('cape', 190, 360, 0.8);
+      setArms(ctx.hero, 'hold');
+      await ctx.wait(0.2);
+      ctx.sfx.roar();
+      await ctx.T(0.8, (k) => { place(q(ctx, 'bull'), x0 - k * 560, 430); place(ctx.hero, 140 - Math.min(1, k * 3) * 30, 430); place(c, 190 + Math.sin(k * Math.PI) * 40, 360, -Math.sin(k * Math.PI) * 40, 0.8); });
+      ctx.say('OLE!');
+      c.dataset.keep = '1';
+    },
+    fails: {
+      async gored(ctx) {
+        const x0 = this.bx(ctx.t());
+        ctx.sfx.roar();
+        await ctx.T(0.3, (k) => place(q(ctx, 'bull'), x0 - k * (x0 - 210), 430));
+        ctx.shake(); ctx.say('AAAA!'); ctx.faint();
+        await ctx.T(0.8, (k) => place(ctx.hero, 140 - k * 60, 430 - Math.sin(k * Math.PI * 0.9) * 360, -k * 540));
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- 30. avalanche
+  avalanche: {
+    correct: 'skis',
+    wrong: { umbrella: 'buried', fan: 'buried', sponge: 'buried' },
+    bg: () => sky('#9fc8f0', '#e6f2ff', 'av') + `
+      <path d="M0 120 L120 40 L260 220 L400 330 V520 H0 Z" fill="#f6f9ff" stroke="${INK}" stroke-width="4"/>
+      <path d="M0 430 L400 430" stroke="${INK}" stroke-width="0"/><rect y="430" width="400" height="90" fill="#eef4fb"/>
+      <path d="M60 300 l14 -30 l14 30 Z M300 400 l14 -30 l14 30 Z" fill="#2e7d4a" stroke="${INK}" stroke-width="3"/>
+      <g class="snowwave"><path d="M-160 0 C-150 -80 -80 -110 -20 -80 C10 -110 60 -90 60 -40 C90 -40 90 0 60 10 Z" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="-60" cy="-60" r="16" fill="#eef4fb"/><circle cx="10" cy="-50" r="12" fill="#eef4fb"/></g>`,
+    setup(ctx) { place(ctx.hero, 250, 430); setArms(ctx.hero, 'up'); setFace(ctx.hero, 'scared'); },
+    wp: (t) => Math.min(1, t / 12) * 0.55,
+    wave(ctx, k) { place(q(ctx, 'snowwave'), -40 + k * 300, 200 + k * 230, 0, 1 + k * 0.8); },
+    idle(ctx, t) { this.wave(ctx, this.wp(t)); ctx.hero.setAttribute('transform', `translate(250 430) rotate(${Math.sin(t * 20) * 1.5})`); },
+    async win(ctx) {
+      const k0 = this.wp(ctx.t());
+      const sk = ctx.tool('skis', 250, 440, 0.7);
+      ctx.sfx.whoosh(); ctx.say('YIHUU!');
+      await ctx.T(1.0, (k) => { place(ctx.hero, 250 + k * 220, 430); place(sk, 250 + k * 220, 440, 0, 0.7); this.wave(ctx, k0 + (0.85 - k0) * k); });
+    },
+    fails: {
+      async buried(ctx) {
+        const k0 = this.wp(ctx.t());
+        ctx.sfx.whoosh();
+        await ctx.T(0.5, (k) => this.wave(ctx, k0 + (0.75 - k0) * k));
+        ctx.shake();
+        ctx.hero.style.display = 'none';
+        q(ctx, 'snowwave').style.display = 'none';
+        const mound = g({}, `<path d="M-90 0 C-80 -70 80 -70 90 0 Z" fill="#fff" stroke="${INK}" stroke-width="4"/><g transform="translate(10 -50) rotate(-10)"><rect x="-6" y="-30" width="12" height="32" rx="6" fill="#2f7cf6" stroke="${INK}" stroke-width="3"/><circle cy="-34" r="8" fill="#ffd2b0" stroke="${INK}" stroke-width="3"/></g>`);
+        place(mound, 250, 432);
+        ctx.layer.appendChild(mound);
+        ctx.puff(250, 400, '#fff', 14, 60);
+        await ctx.T(0.6, (k) => mound.lastElementChild && mound.querySelector('g').setAttribute('transform', `translate(10 -50) rotate(${Math.sin(k * 12) * 20})`));
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- 31. quicksand
+  quicksand: {
+    correct: 'rope',
+    wrong: { anchor: 'sunk', broccoli: 'sunk', skateboard: 'sunk' },
+    bg: () => sky('#ffd9a0', '#fff2d8', 'qs') + ground('#e8c07a') + `
+      <path d="M330 430 V200" stroke="#6b3f22" stroke-width="16"/><path d="M330 220 Q300 200 240 196" stroke="#6b3f22" stroke-width="10" fill="none" stroke-linecap="round"/><ellipse cx="350" cy="190" rx="50" ry="26" fill="#5aa84a" stroke="${INK}" stroke-width="4"/>
+      <ellipse cx="180" cy="436" rx="90" ry="16" fill="#b58a4a" stroke="${INK}" stroke-width="4"/>`,
+    setup(ctx) {
+      place(ctx.hero, 180, 440); setArms(ctx.hero, 'up'); setFace(ctx.hero, 'scared');
+      ctx.layer.insertAdjacentHTML('beforeend', `<g class="sandfront"><rect x="0" y="440" width="400" height="80" fill="#e8c07a"/><path d="M90 440 q90 18 180 0" fill="#b58a4a" stroke="${INK}" stroke-width="4"/></g>`);
+    },
+    sy: (t) => 440 + Math.min(80, t * 8),
+    idle(ctx, t) { place(ctx.hero, 180 + Math.sin(t * 3) * 2, this.sy(t)); },
+    async win(ctx) {
+      const y0 = this.sy(ctx.t());
+      const r = el('path', { d: `M240 196 L195 ${y0 - 120}`, stroke: '#c9a06b', 'stroke-width': 6 });
+      ctx.layer.appendChild(r);
+      setArms(ctx.hero, 'up');
+      ctx.sfx.whoosh(); ctx.say('ÇEK!');
+      await ctx.T(0.8, (k) => { const y = y0 - (y0 - 430) * k; place(ctx.hero, 180, y); r.setAttribute('d', `M240 196 L195 ${y - 120}`); });
+      await ctx.T(0.5, (k) => { place(ctx.hero, 180 + k * 110, 430 - Math.sin(k * Math.PI) * 30); r.setAttribute('d', `M240 196 L${195 + k * 110} ${310}`); });
+      r.remove();
+    },
+    fails: {
+      async sunk(ctx) {
+        const y0 = this.sy(ctx.t());
+        ctx.sfx.whoosh();
+        await ctx.T(0.8, (k) => place(ctx.hero, 180, y0 + (600 - y0) * k));
+        ctx.bubbles(180, 440); ctx.say('BLUP!');
+        await ctx.wait(0.3);
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- 32. tsunami
+  tsunami: {
+    correct: 'surfboard',
+    wrong: { umbrella: 'washed', sponge: 'washed', water: 'washed' },
+    bg: () => sky('#8fd3ff', '#e0f4ff', 'ts') + `<rect y="380" width="400" height="140" fill="#f0d090"/><rect y="380" width="400" height="6" fill="${INK}" opacity="0.12"/>
+      <path d="M300 380 v-80 M300 300 q-30 -10 -50 10 M300 300 q30 -16 50 4 M300 300 q-10 -30 -30 -34 M300 300 q14 -30 34 -30" fill="none" stroke="#2e7d4a" stroke-width="8" stroke-linecap="round"/><path d="M300 380 v-80" stroke="#8a5a32" stroke-width="10"/>
+      <g class="tsu"><path d="M-400 140 V-60 C-300 -140 -120 -150 -40 -60 C0 -20 -10 30 -50 30 C-40 0 -70 -20 -90 0 C-60 40 -10 80 40 140 Z" fill="#2f8fd8" stroke="${INK}" stroke-width="4"/><path d="M-200 -110 C-140 -130 -80 -110 -50 -70" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/></g>`,
+    setup(ctx) { place(ctx.hero, 230, 400); setArms(ctx.hero, 'up'); setFace(ctx.hero, 'scared'); },
+    tp: (t) => Math.min(1, t / 11),
+    wave(ctx, k) { place(q(ctx, 'tsu'), -60 + k * 200, 380, 0, 0.6 + k * 0.6); },
+    idle(ctx, t) { this.wave(ctx, this.tp(t) * 0.7); },
+    async win(ctx) {
+      const k0 = this.tp(ctx.t()) * 0.7;
+      const sb = ctx.tool('surfboard', 230, 400, 0.8);
+      ctx.say('YIHUU!');
+      await ctx.T(1.2, (k) => {
+        this.wave(ctx, k0 + k * (1.6 - k0));
+        const x = 230 + k * 250, y = 400 - Math.sin(Math.min(1, k * 2) * Math.PI * 0.5) * 140;
+        place(ctx.hero, x, y - 10, -10); place(sb, x, y, 60, 0.8);
+      });
+    },
+    fails: {
+      async washed(ctx) {
+        const k0 = this.tp(ctx.t()) * 0.7;
+        ctx.sfx.splash();
+        await ctx.T(1.0, (k) => { this.wave(ctx, k0 + k * (1.8 - k0)); if (k > 0.35) place(ctx.hero, 230 + (k - 0.35) * 400, 400 - (k - 0.35) * 200, (k - 0.35) * 900); });
+        ctx.say('BLUP!');
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- 33. skunk
+  skunk: {
+    correct: 'clothespin',
+    wrong: { flower: 'stink', cheese: 'stink', fan: 'stink' },
+    bg: () => sky('#bfe8c0', '#ecf8e8', 'sk2') + ground('#6ab04a') + `
+      <path d="M40 430 L80 300 L120 430 Z M330 430 L360 320 L390 430 Z" fill="#2e7d4a" stroke="${INK}" stroke-width="4"/>
+      <g class="skunk"><path class="tail" d="M30 -20 C70 -40 70 -110 30 -120 C10 -110 20 -70 10 -40 Z" fill="#2b2140" stroke="${INK}" stroke-width="3"/><path d="M28 -30 C50 -60 50 -100 32 -110" fill="none" stroke="#fff" stroke-width="7"/>
+        <ellipse cx="0" cy="-24" rx="36" ry="22" fill="#2b2140"/><path d="M-30 -36 C-10 -46 20 -46 34 -34" stroke="#fff" stroke-width="8" fill="none"/>
+        <circle cx="-36" cy="-34" r="16" fill="#2b2140"/><circle cx="-42" cy="-38" r="3" fill="#fff"/><circle cx="-52" cy="-30" r="3" fill="#ff9ac8"/><path d="M-30 -48 l-4 -8 l8 4 Z" fill="#2b2140"/></g>
+      <g class="stinkc" opacity="0"><circle cx="0" cy="0" r="40" fill="#b8d860" opacity="0.6"/><circle cx="40" cy="-20" r="30" fill="#b8d860" opacity="0.6"/><circle cx="-30" cy="-30" r="30" fill="#b8d860" opacity="0.6"/></g>`,
+    setup(ctx) { place(ctx.hero, 130, 430); setArms(ctx.hero, 'up'); setFace(ctx.hero, 'scared'); },
+    idle(ctx, t) {
+      const turn = t > 3;
+      place(q(ctx, 'skunk'), 300 - Math.min(40, t * 4), 430, 0, turn ? -1 : 1, 1);
+      q(ctx, 'tail').setAttribute('transform', `rotate(${Math.sin(t * 6) * 8} 30 -20)`);
+    },
+    async win(ctx) {
+      const cp = ctx.tool('clothespin', 120, 314, 0.22);
+      cp.dataset.keep = '1';
+      const c = q(ctx, 'stinkc');
+      ctx.sfx.whoosh();
+      await ctx.T(0.8, (k) => { c.setAttribute('opacity', Math.sin(k * Math.PI)); place(c, 230 - k * 100, 340, 0, 1 + k); });
+      setFace(ctx.hero, 'happy'); ctx.say('MİS!');
+      await ctx.T(0.6, (k) => place(q(ctx, 'skunk'), 260 + k * 200, 430, 0, -1, 1));
+    },
+    fails: {
+      async stink(ctx) {
+        const c = q(ctx, 'stinkc');
+        ctx.sfx.whoosh();
+        await ctx.T(0.7, (k) => { c.setAttribute('opacity', k); place(c, 230 - k * 100, 340, 0, 1 + k * 1.2); });
+        ctx.hero.style.setProperty('--skin', '#c8e0a0');
+        ctx.say('PÖFF!'); ctx.faint();
+        await ctx.T(0.5, (k) => place(ctx.hero, 130, 430, -k * 90));
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- 34. lightning storm
+  lightning: {
+    correct: 'boots',
+    wrong: { umbrella: 'zap', kite: 'zap', sword: 'zap' },
+    bg: () => sky('#3a3e5a', '#6a6e8a', 'lt') + ground('#4a6a4a') + `
+      <g class="rain" stroke="#9fc8f0" stroke-width="3" opacity="0.6"></g>
+      <g class="clouds" fill="#5a5e78" stroke="${INK}" stroke-width="4"><ellipse cx="100" cy="70" rx="90" ry="40"/><ellipse cx="220" cy="60" rx="100" ry="46"/><ellipse cx="330" cy="80" rx="80" ry="36"/></g>
+      <path class="bolt" d="M220 100 L190 220 L230 220 L200 340" fill="none" stroke="#ffd34d" stroke-width="10" stroke-linejoin="round" opacity="0"/>`,
+    setup(ctx) {
+      place(ctx.hero, 200, 430); setArms(ctx.hero, 'up'); setFace(ctx.hero, 'scared');
+      const r = q(ctx, 'rain');
+      for (let i = 0; i < 30; i++) r.insertAdjacentHTML('beforeend', '<path d="M0 0 l-6 18"/>');
+    },
+    idle(ctx, t) {
+      [...q(ctx, 'rain').children].forEach((d, i) => d.setAttribute('transform', `translate(${(i * 47) % 420} ${(i * 31 + t * 400) % 440})`));
+      q(ctx, 'bolt').setAttribute('opacity', Math.sin(t * 7) > 0.97 ? 0.8 : 0);
+    },
+    async strike(ctx) {
+      const b = q(ctx, 'bolt');
+      b.setAttribute('d', 'M220 100 L190 220 L230 220 L200 300');
+      b.setAttribute('opacity', 1);
+      ctx.flash('#fff6a0'); ctx.sfx.bigBoom(); ctx.shake();
+      await ctx.wait(0.3);
+      b.setAttribute('opacity', 0);
+    },
+    async win(ctx) {
+      const bt = ctx.tool('boots', 200, 420, 0.42);
+      bt.dataset.keep = '1';
+      await ctx.wait(0.3);
+      await this.strike(ctx);
+      ctx.puff(200, 430, '#ffd34d', 10, 50);
+      setFace(ctx.hero, 'happy'); ctx.say('PFF!');
+    },
+    fails: {
+      async zap(ctx) {
+        await ctx.wait(0.2);
+        await this.strike(ctx);
+        ctx.burn();
+        ctx.hero.fx.insertAdjacentHTML('beforeend', `<path d="M-24 -150 l-8 -16 M0 -152 v-20 M24 -150 l8 -16" stroke="${INK}" stroke-width="4"/>`);
+        await ctx.wait(0.3);
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- 35. piranha river
+  piranha: {
+    correct: 'plank',
+    wrong: { steak: 'nibbled', banana: 'nibbled', ring: 'nibbled' },
+    bg: () => sky('#a8e0a0', '#e0f4d8', 'pi') + `
+      <path d="M300 330 h100 v190 h-100 Z" fill="#7a5a3a" stroke="${INK}" stroke-width="4"/><rect x="300" y="322" width="100" height="14" fill="#5aa84a" stroke="${INK}" stroke-width="3"/>
+      <path d="M340 322 V240 M340 250 q-20 -30 -40 -20 M340 250 q20 -30 40 -20" fill="none" stroke="#2e7d4a" stroke-width="8" stroke-linecap="round"/>`,
+    fish: `<g><path d="M-16 0 C-10 -14 10 -14 16 0 C10 14 -10 14 -16 0 Z M16 0 l10 -8 v16 Z" fill="#e8453c" stroke="${INK}" stroke-width="3"/><circle cx="-8" cy="-3" r="2.5" fill="${INK}"/><path d="M-16 2 l4 -2 l2 3 l3 -3" fill="#fff" stroke="${INK}" stroke-width="1"/></g>`,
+    setup(ctx) {
+      ctx.layer.insertAdjacentHTML('beforeend', `<g class="log"><rect x="-56" y="0" width="112" height="22" rx="11" fill="#8a5a32" stroke="${INK}" stroke-width="4"/><circle cx="-50" cy="11" r="7" fill="#c9a06b" stroke="${INK}" stroke-width="2"/></g>`);
+      place(ctx.hero, 170, 352); setArms(ctx.hero, 'up'); setFace(ctx.hero, 'scared');
+      ctx.layer.appendChild(ctx.hero);
+      ctx.layer.insertAdjacentHTML('beforeend', `<g class="riv"><rect x="0" y="370" width="300" height="150" fill="#2f8fd8" opacity="0.92"/><path d="M0 370 q25 -8 50 0 t50 0 t50 0 t50 0 t50 0 t50 0" fill="none" stroke="#fff" stroke-width="4" opacity="0.7"/></g><g class="fishes"></g>`);
+      for (let i = 0; i < 4; i++) q(ctx, 'fishes').insertAdjacentHTML('beforeend', this.fish);
+    },
+    sink: (t) => Math.min(30, t * 3),
+    idle(ctx, t) {
+      const s = this.sink(t);
+      place(q(ctx, 'log'), 170, 352 + s);
+      place(ctx.hero, 170, 352 + s, Math.sin(t * 2) * 4);
+      [...q(ctx, 'fishes').children].forEach((f, i) => {
+        const ph = (t * 0.9 + i * 0.27) % 1;
+        place(f, 30 + i * 70 + ph * 40, 400 - Math.sin(ph * Math.PI) * 70, ph * 160 - 80, i % 2 ? -1 : 1, 1);
+      });
+    },
+    async win(ctx) {
+      const s = this.sink(ctx.t());
+      const pl = g({}, `<rect x="0" y="-8" width="140" height="16" rx="3" fill="#c9893b" stroke="${INK}" stroke-width="4"/>`);
+      ctx.layer.appendChild(pl);
+      await ctx.T(0.4, (k) => place(pl, 200, 340 + s / 2, -k * 4 + 4, k, 1));
+      setArms(ctx.hero, 'down');
+      await ctx.T(0.8, (k) => place(ctx.hero, 170 + k * 190, 352 + s - (352 + s - 324) * k - Math.abs(Math.sin(k * Math.PI * 4)) * 8));
+    },
+    fails: {
+      async nibbled(ctx) {
+        const s = this.sink(ctx.t());
+        const fs = [...q(ctx, 'fishes').children];
+        await ctx.T(0.4, (k) => fs.forEach((f, i) => place(f, 140 + i * 20, 380 - k * 20 - i * 6, 0, i % 2 ? -1 : 1, 1)));
+        ctx.sfx.chomp(); ctx.say('NOM NOM!');
+        await ctx.T(0.8, (k) => { place(ctx.hero, 170, 352 + s + k * 160, k * 20); place(q(ctx, 'log'), 170, 352 + s + k * 30, k * 20); });
+        ctx.bubbles(170, 380);
+      },
+    },
+  },
 };
 
 export const HAZARD_IDS = Object.keys(HAZARDS);

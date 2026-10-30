@@ -14,7 +14,7 @@ import { t, getLang, setLang, applyStatic, sayWord } from './i18n.js';
 const $ = (id) => document.getElementById(id);
 const SAVE_KEY = 'nfa-choices-v1';
 const save = (() => {
-  const base = { level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0, pet: 'none', pets: ['none'], chests: {}, vibe: true };
+  const base = { level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0, pet: 'none', pets: ['none'], chests: {}, vibe: true, streak: 0 };
   try { return { ...base, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; } catch (e) { return base; }
 })();
 const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* session only */ } };
@@ -41,30 +41,71 @@ function rng(seed) {
     return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
   };
 }
-// The order the dangers come in: every block of 15 levels shows each one, in a shuffled order.
-function hazardFor(n, k) {
-  const idx = (n - 1) * 1 + k * 7;
-  const block = Math.floor(idx / HAZARD_IDS.length);
-  const r = rng(9001 + block * 31);
-  const order = HAZARD_IDS.slice();
-  for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-  return order[idx % order.length];
+// The order the dangers come in. Levels 1-35 each bring one new danger, easiest first; extra stages
+// in multi-stage levels reuse dangers already met. After that it's a mix where none of the last ten
+// dangers comes back.
+const INTRO = ['fire', 'shark', 'bear', 'cold', 'desert', 'thief', 'bees', 'flood', 'ghost', 'bomb', 'dragon', 'vampire', 'gorilla', 'meteor', 'dino', 'lava', 'mice', 'snake', 'tornado', 'zombie', 'lion', 'spider', 'carsink', 'alien', 'boulder', 'airballoon', 'witch', 'robot', 'bull', 'skunk', 'avalanche', 'quicksand', 'tsunami', 'lightning', 'piranha'].filter((id) => HAZARDS[id]);
+for (const id of HAZARD_IDS) if (!INTRO.includes(id)) INTRO.push(id);
+const stageCount = (n) => (n >= 30 && n % 5 === 0 ? 3 : n >= 12 && n % 3 === 0 ? 2 : 1);
+const seqCache = [[]];
+const seqRecent = [];
+const seqUses = {};
+function levelHazards(n) {
+  while (seqCache.length <= n) {
+    const m = seqCache.length;
+    const r = rng(m * 131 + 7);
+    const list = [];
+    for (let k = 0; k < stageCount(m); k++) {
+      let id;
+      if (k === 0 && m <= INTRO.length) id = INTRO[m - 1];
+      else {
+        const pool = (m <= INTRO.length ? INTRO.slice(0, m) : HAZARD_IDS).filter((h) => !list.includes(h));
+        const fresh = pool.filter((h) => !seqRecent.slice(-10).includes(h));
+        const from0 = fresh.length ? fresh : pool;
+        const least = Math.min(...from0.map((h) => seqUses[h] || 0));
+        const from = from0.filter((h) => (seqUses[h] || 0) <= least + 1);
+        id = from[Math.floor(r() * from.length)];
+      }
+      list.push(id);
+      seqUses[id] = (seqUses[id] || 0) + 1;
+      seqRecent.push(id);
+      if (seqRecent.length > 20) seqRecent.shift();
+    }
+    seqCache.push(list);
+  }
+  return seqCache[n];
 }
 export function levelSpec(n) {
   if (n === 0) return { n, stages: [{ hazard: 'lava', options: ['gasoline', 'water'], time: 12 }] };
   const r = rng(n * 7919 + 17);
-  const stages = n >= 30 && n % 5 === 0 ? 3 : n >= 12 && n % 3 === 0 ? 2 : 1;
   const choices = n <= 6 ? 2 : n < 40 ? 3 : 4;
   const time = Math.max(4.5, 10 - n * 0.09);
-  const list = [];
-  for (let k = 0; k < stages; k++) list.push(makeStage(hazardFor(n, k), r, choices, time));
+  const decoy = n < 8 ? 0 : n < 25 ? 0.4 : 0.6;
+  const list = levelHazards(n).map((id, k) => {
+    const st = makeStage(id, r, choices, time, decoy);
+    if (k === 0 && n <= INTRO.length) st.isNew = true;
+    const roll = r();
+    st.twist = n >= 28 && roll < 0.12 ? 'swap' : n >= 18 && roll < 0.32 ? 'mystery' : null;
+    return st;
+  });
   return { n, mode: 'level', stages: list };
 }
-function makeStage(id, r, choices, time) {
+// Silly items that never save anyone; mixed in as wrong answers so the same danger looks different.
+const DECOYS = ['teddy', 'broccoli', 'icecream', 'ketchup', 'cheese', 'flower', 'drum', 'paper', 'sponge', 'candle', 'salt', 'clothespin', 'garlic', 'kite'];
+const DECOY_SKIP = { cold: ['candle', 'salt'], avalanche: ['salt'], fire: ['sponge'], bomb: ['sponge'], tornado: ['kite'], alien: ['kite'] };
+function makeStage(id, r, choices, time, decoy = 0) {
   const hz = HAZARDS[id];
   const wrongs = Object.keys(hz.wrong);
   for (let i = wrongs.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [wrongs[i], wrongs[j]] = [wrongs[j], wrongs[i]]; }
   const options = [hz.correct, ...wrongs.slice(0, choices - 1)];
+  const pool = DECOYS.filter((d) => d !== hz.correct && !hz.wrong[d] && !(DECOY_SKIP[id] || []).includes(d));
+  let swaps = decoy >= 0.5 && choices >= 3 ? 2 : 1;
+  for (let i = options.length - 1; i > 0 && swaps > 0; i--) {
+    if (r() < decoy && pool.length) {
+      options[i] = pool.splice(Math.floor(r() * pool.length), 1)[0];
+      swaps--;
+    }
+  }
   for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [options[i], options[j]] = [options[j], options[i]]; }
   return { hazard: id, options, time };
 }
@@ -73,7 +114,10 @@ function endlessStage(lv) {
   let id;
   do id = HAZARD_IDS[Math.floor(lv.r() * HAZARD_IDS.length)]; while (id === lv.lastId);
   lv.lastId = id;
-  return makeStage(id, lv.r, lv.score < 8 ? 3 : 4, Math.max(2.6, 7 - lv.score * 0.18));
+  const st = makeStage(id, lv.r, lv.score < 8 ? 3 : 4, Math.max(2.6, 7 - lv.score * 0.18), 0.5);
+  const roll = lv.r();
+  st.twist = lv.score >= 10 && roll < 0.15 ? 'swap' : lv.score >= 5 && roll < 0.35 ? 'mystery' : null;
+  return st;
 }
 function endlessSpec() {
   const lv = { n: -1, mode: 'endless', stages: [], score: 0, paid: 0, r: rng((Date.now() & 0xffffff) + 1) };
@@ -86,7 +130,7 @@ function dailySpec() {
   const r = rng(d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate());
   const ids = HAZARD_IDS.slice();
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-  return { n: -2, mode: 'daily', stages: ids.slice(0, 5).map((id, k) => makeStage(id, r, k < 3 ? 3 : 4, 6)) };
+  return { n: -2, mode: 'daily', stages: ids.slice(0, 5).map((id, k) => makeStage(id, r, k < 3 ? 3 : 4, 6, 0.5)) };
 }
 
 // Every distinct fail ending (danger + the way it goes wrong), for the album.
@@ -301,7 +345,52 @@ function buildStage(quiet = false) {
     box.appendChild(b);
   });
   $('timer').classList.remove('low');
+  twistDone = false;
+  if (stage.twist === 'mystery' && !quiet) {
+    const cards = [...box.children];
+    const b = cards[(level.n * 3 + stageIdx * 5 + (level.score || 0)) % cards.length];
+    b.classList.add('mystery');
+    b.innerHTML = '<span class="q">?</span>';
+  }
   if (level.n === 1 && stageIdx === 0 && !introAd && !quiet) say(t('quick'));
+  else if (stage.isNew && !quiet && !introAd) say(t('new.hazard'));
+  else if (stage.twist && !quiet) say(t('twist.' + stage.twist));
+}
+
+// Mid-stage twists: the hidden card shows itself, or two cards trade places.
+let twistDone = false;
+function runTwist() {
+  twistDone = true;
+  const box = $('choices');
+  if (stage.twist === 'mystery') {
+    const b = box.querySelector('.mystery');
+    if (!b) return;
+    b.classList.remove('mystery');
+    b.innerHTML = toolSvg(b.dataset.tool);
+    b.classList.add('reveal');
+    sfx.pop();
+  } else if (stage.twist === 'swap') {
+    const cards = [...box.children];
+    if (cards.length < 2) return;
+    const i = (level.n + stageIdx + (level.score || 0)) % cards.length;
+    const j = (i + 1 + ((level.n || level.score || 0) % (cards.length - 1))) % cards.length;
+    const a = cards[i], b = cards[j];
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    const mark = document.createElement('span');
+    box.insertBefore(mark, a);
+    box.insertBefore(a, b);
+    box.insertBefore(b, mark);
+    mark.remove();
+    for (const [el2, from] of [[a, ra], [b, rb]]) {
+      const to = el2.getBoundingClientRect();
+      el2.style.transition = 'none';
+      el2.style.transform = `translate(${from.left - to.left}px, ${from.top - to.top}px)`;
+      void el2.offsetWidth;
+      el2.style.transition = 'transform 0.35s cubic-bezier(.3,1.4,.5,1)';
+      el2.style.transform = '';
+    }
+    sfx.whoosh();
+  }
 }
 
 async function pick(id, btn) {
@@ -340,9 +429,9 @@ async function pick(id, btn) {
     if (stageIdx < level.stages.length) buildStage();
     else won();
   } else {
-    const type = hz.wrong[id];
+    const type = hz.wrong[id] || Object.values(hz.wrong)[0];
     const key = stage.hazard + ':' + id;
-    const fresh = !introAd && !save.album[key];
+    const fresh = !introAd && !save.album[key] && ENDINGS.some((e) => e.key === key);
     if (fresh) { save.album[key] = 1; save.coins += albumCoins(); writeSave(); }
     buzz(60);
     await hz.fails[type].call(hz, ctx);
@@ -362,6 +451,7 @@ function stamp(text, good) {
 }
 
 async function lost(type, fresh = false, tool = '') {
+  if (level.mode === 'level' && level.n > 0 && !introAd) { save.streak = 0; writeSave(); }
   buzz([90, 60, 90]);
   state = 'lost';
   const my = gen;
@@ -405,9 +495,12 @@ async function won() {
   const today = dayKey(new Date());
   const dailyFirst = level.mode === 'daily' && save.dailyCh !== today;
   const reward = Math.round((level.mode === 'daily' ? (dailyFirst ? 100 : 0) : level.n === 0 ? 20 : 10 + Math.floor(level.n * 1.5) + stars * 5) * (level.n === 0 ? 1 : coinMult()));
+  let streakPct = 0;
+  if (level.mode === 'level' && level.n > 0) { save.streak = (save.streak || 0) + 1; streakPct = Math.min(50, (save.streak - 1) * 10); }
+  const bonus = Math.round(reward * streakPct / 100);
   pendingChest = level.n > 0 && level.n % 10 === 0 && !save.chests[level.n] ? level.n : 0;
   if (dailyFirst) { save.dailyCh = today; save.dailyCount++; save.hints++; }
-  save.coins += reward;
+  save.coins += reward + bonus;
   if (level.n > 0) {
     save.level = Math.max(save.level, level.n + 1);
     save.stars[level.n] = Math.max(save.stars[level.n] || 0, stars);
@@ -422,7 +515,9 @@ async function won() {
   $('btn-next').textContent = daily ? t('home') : t('next');
   $('btn-won-home').hidden = daily;
   buzz(25);
-  $('won-coins').textContent = '+' + reward;
+  $('won-coins').textContent = '+' + (reward + bonus);
+  $('won-streak').hidden = streakPct <= 0;
+  $('won-streak').textContent = t('won.streak', { n: save.streak, p: streakPct });
   updateCoins();
   const box = $('won-stars');
   box.hidden = level.n <= 0;
@@ -503,7 +598,7 @@ function goHome() {
 }
 
 // fail album
-const HZ_ICON = { lava: '🌋', shark: '🦈', bees: '🐝', fire: '🔥', bear: '🐻', ghost: '👻', cold: '❄️', flood: '🌊', bomb: '💣', thief: '🦹', dragon: '🐉', vampire: '🧛', desert: '🏜️', meteor: '☄️', dino: '🦖', snake: '🐍', alien: '🛸', tornado: '🌪️', carsink: '🚗', airballoon: '🎈', boulder: '🪨', spider: '🕷️', mice: '🐭', zombie: '🧟', lion: '🦁' };
+const HZ_ICON = { lava: '🌋', shark: '🦈', bees: '🐝', fire: '🔥', bear: '🐻', ghost: '👻', cold: '❄️', flood: '🌊', bomb: '💣', thief: '🦹', dragon: '🐉', vampire: '🧛', desert: '🏜️', meteor: '☄️', dino: '🦖', snake: '🐍', alien: '🛸', tornado: '🌪️', carsink: '🚗', airballoon: '🎈', boulder: '🪨', spider: '🕷️', mice: '🐭', zombie: '🧟', lion: '🦁', gorilla: '🦍', witch: '🧙', robot: '🤖', bull: '🐂', avalanche: '🏔️', quicksand: '⏳', tsunami: '🌊', skunk: '🦨', lightning: '⚡', piranha: '🐟' };
 const albumCount = () => ENDINGS.filter((e) => save.album[e.key]).length;
 function renderAlbum() {
   const got = albumCount();
@@ -797,6 +892,7 @@ function frame(now) {
       const left = Math.max(0, 1 - stageT / stage.time);
       $('timer').firstElementChild.style.transform = `scaleX(${left})`;
       $('timer').classList.toggle('low', left < 0.3);
+      if (stage.twist && !twistDone && left < 0.55) runTwist();
       if (left <= 0) timeUp();
     }
   }
@@ -847,6 +943,7 @@ window.__choices = {
   endless: () => startLevel(-1, endlessSpec()),
   daily: () => startLevel(-2, dailySpec()),
   endings: ENDINGS,
+  spec: (n) => levelSpec(n),
   pickCorrect: () => { const b = [...$('choices').children].find((x) => x.dataset.tool === HAZARDS[stage.hazard].correct); b && pick(b.dataset.tool, b); },
   hazardIds: HAZARD_IDS,
   optionsFor: (id) => [HAZARDS[id].correct, ...Object.keys(HAZARDS[id].wrong)],
