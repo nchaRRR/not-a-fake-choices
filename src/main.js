@@ -3,6 +3,7 @@
 // the hero before the bar runs out. Wrong picks end the way the ads always end.
 import { el, g, place, makeHero, setFace, setArms, paintHero, toolSvg, toolNode, OUTFITS, setOutfit } from './art.js';
 import { showRewarded } from './ads.js';
+import { storeLink, openLink } from './promo.js';
 import { HAZARDS, HAZARD_IDS } from './hazards.js';
 import { sfx, unlockAudio, setMuted } from './audio.js';
 import { startMusic, setMusicEnabled } from './music.js';
@@ -12,7 +13,7 @@ import { t, getLang, setLang, applyStatic, sayWord } from './i18n.js';
 const $ = (id) => document.getElementById(id);
 const SAVE_KEY = 'nfa-choices-v1';
 const save = (() => {
-  const base = { level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 } };
+  const base = { level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0 };
   try { return { ...base, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; } catch (e) { return base; }
 })();
 const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* session only */ } };
@@ -44,20 +45,44 @@ export function levelSpec(n) {
   if (n === 0) return { n, stages: [{ hazard: 'lava', options: ['gasoline', 'water'], time: 12 }] };
   const r = rng(n * 7919 + 17);
   const stages = n >= 30 && n % 5 === 0 ? 3 : n >= 12 && n % 3 === 0 ? 2 : 1;
-  const choices = n <= 6 ? 2 : 3;
+  const choices = n <= 6 ? 2 : n < 40 ? 3 : 4;
   const time = Math.max(4.5, 10 - n * 0.09);
   const list = [];
-  for (let k = 0; k < stages; k++) {
-    const id = hazardFor(n, k);
-    const hz = HAZARDS[id];
-    const wrongs = Object.keys(hz.wrong);
-    for (let i = wrongs.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [wrongs[i], wrongs[j]] = [wrongs[j], wrongs[i]]; }
-    const options = [hz.correct, ...wrongs.slice(0, choices - 1)];
-    for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [options[i], options[j]] = [options[j], options[i]]; }
-    list.push({ hazard: id, options, time });
-  }
-  return { n, stages: list };
+  for (let k = 0; k < stages; k++) list.push(makeStage(hazardFor(n, k), r, choices, time));
+  return { n, mode: 'level', stages: list };
 }
+function makeStage(id, r, choices, time) {
+  const hz = HAZARDS[id];
+  const wrongs = Object.keys(hz.wrong);
+  for (let i = wrongs.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [wrongs[i], wrongs[j]] = [wrongs[j], wrongs[i]]; }
+  const options = [hz.correct, ...wrongs.slice(0, choices - 1)];
+  for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [options[i], options[j]] = [options[j], options[i]]; }
+  return { hazard: id, options, time };
+}
+// Endless: random dangers, never the same twice in a row, the clock gets shorter every save.
+function endlessStage(lv) {
+  let id;
+  do id = HAZARD_IDS[Math.floor(lv.r() * HAZARD_IDS.length)]; while (id === lv.lastId);
+  lv.lastId = id;
+  return makeStage(id, lv.r, lv.score < 8 ? 3 : 4, Math.max(2.6, 7 - lv.score * 0.18));
+}
+function endlessSpec() {
+  const lv = { n: -1, mode: 'endless', stages: [], score: 0, paid: 0, r: rng((Date.now() & 0xffffff) + 1) };
+  lv.stages.push(endlessStage(lv));
+  return lv;
+}
+// Daily challenge: the same five dangers for everyone on the same day.
+function dailySpec() {
+  const d = new Date();
+  const r = rng(d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate());
+  const ids = HAZARD_IDS.slice();
+  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  return { n: -2, mode: 'daily', stages: ids.slice(0, 5).map((id, k) => makeStage(id, r, k < 3 ? 3 : 4, 6)) };
+}
+
+// Every distinct fail ending (danger + the way it goes wrong), for the album.
+export const ENDINGS = HAZARD_IDS.flatMap((h) => [...new Set(Object.values(HAZARDS[h].wrong))].map((type) => ({ h, type, key: h + ':' + type, tool: Object.keys(HAZARDS[h].wrong).find((k) => HAZARDS[h].wrong[k] === type) })));
+const ALBUM_COINS = 15;
 
 // ---------------------------------------------------------------- tweens & particles
 let speed = 1;
@@ -209,10 +234,10 @@ let taunt = '';
 let paused = false;
 let run = { fracs: [], hint: false, revived: false };
 
-function startLevel(n) {
+function startLevel(n, spec) {
   gen++;
   tweens.length = 0;
-  level = levelSpec(n);
+  level = spec || levelSpec(n);
   stageIdx = 0;
   run = { fracs: [], hint: false, revived: false };
   paused = false;
@@ -221,7 +246,7 @@ function startLevel(n) {
   $('bottom').hidden = false;
   $('stamp').hidden = true;
   const ts = t('taunts');
-  $('taunt').textContent = ts[(n * 5) % ts.length].replace('{n}', n);
+  $('taunt').textContent = n < 0 ? ts[0] : ts[(n * 5) % ts.length].replace('{n}', n);
   updateCoins();
   updateHints();
   buildStage();
@@ -288,13 +313,20 @@ async function pick(id, btn) {
     if (my !== gen) return;
     $('stamp').hidden = true;
     stageIdx++;
+    if (level.mode === 'endless') {
+      level.score++;
+      level.stages.push(endlessStage(level));
+    }
     if (stageIdx < level.stages.length) buildStage();
     else won();
   } else {
     const type = hz.wrong[id];
+    const key = stage.hazard + ':' + type;
+    const fresh = !introAd && !save.album[key];
+    if (fresh) { save.album[key] = 1; save.coins += ALBUM_COINS; writeSave(); }
     await hz.fails[type].call(hz, ctx);
     if (my !== gen) return;
-    lost(type);
+    lost(type, fresh);
   }
 }
 
@@ -308,7 +340,7 @@ function stamp(text, good) {
   s.style.animation = '';
 }
 
-async function lost(type) {
+async function lost(type, fresh = false) {
   state = 'lost';
   const my = gen;
   sfx.lose();
@@ -324,6 +356,20 @@ async function lost(type) {
   }
   $('lost-line').textContent = t('fail.' + type);
   $('btn-revive').hidden = level.n === 0 || run.revived;
+  $('lost-new').hidden = !fresh;
+  $('lost-new').textContent = t('album.new', { c: ALBUM_COINS });
+  const sc = $('lost-score');
+  sc.hidden = level.mode !== 'endless';
+  if (level.mode === 'endless') {
+    const best = level.score > save.endlessBest;
+    save.endlessBest = Math.max(save.endlessBest, level.score);
+    save.coins += (level.score - level.paid) * 3;
+    level.paid = level.score;
+    writeSave();
+    sc.textContent = (best ? t('endless.best') + ' ' : '') + t('endless.score', { n: level.score, b: save.endlessBest });
+    track('endless_end', { score: level.score });
+  }
+  updateCoins();
   showScreen('screen-lost');
 }
 
@@ -334,7 +380,10 @@ async function won() {
   let stars = avg >= 0.5 ? 3 : avg >= 0.25 ? 2 : 1;
   if (run.hint) stars = Math.min(stars, 2);
   if (run.revived) stars = 1;
-  const reward = level.n === 0 ? 20 : 10 + Math.floor(level.n * 1.5) + stars * 5;
+  const today = dayKey(new Date());
+  const dailyFirst = level.mode === 'daily' && save.dailyCh !== today;
+  const reward = level.mode === 'daily' ? (dailyFirst ? 100 : 0) : level.n === 0 ? 20 : 10 + Math.floor(level.n * 1.5) + stars * 5;
+  if (dailyFirst) { save.dailyCh = today; save.dailyCount++; save.hints++; }
   save.coins += reward;
   if (level.n > 0) {
     save.level = Math.max(save.level, level.n + 1);
@@ -344,15 +393,17 @@ async function won() {
   track('level_win', { level: level.n });
   await wait(0.3);
   if (my !== gen) return;
-  $('won-title').textContent = level.n === 0 ? t('intro.won') : t('won.title', { n: level.n });
-  $('won-line').textContent = level.n === 0 ? t('won.line') : t('won.stars' + stars);
+  const daily = level.mode === 'daily';
+  $('won-title').textContent = daily ? t('daily.won') : level.n === 0 ? t('intro.won') : t('won.title', { n: level.n });
+  $('won-line').textContent = daily ? (dailyFirst ? t('daily.reward') : t('daily.again')) : level.n === 0 ? t('won.line') : t('won.stars' + stars);
+  $('btn-next').textContent = daily ? t('home') : t('next');
   $('won-coins').textContent = '+' + reward;
   updateCoins();
   const box = $('won-stars');
-  box.hidden = level.n === 0;
+  box.hidden = level.n <= 0;
   box.innerHTML = [0, 1, 2].map(() => `<svg class="star" viewBox="0 0 50 50"><path d="M25 3 l6.5 14 15 1.6 -11.3 10 3.3 14.8 L25 35.8 11.5 43.4 14.8 28.6 3.5 18.6 l15 -1.6 Z"/></svg>`).join('');
   showScreen('screen-won');
-  for (let i = 0; i < stars && level.n > 0; i++) {
+  for (let i = 0; i < stars && level.n > 0 && !daily; i++) {
     await wait(0.25);
     if (my !== gen) return;
     box.children[i].classList.add('on', 'pop');
@@ -388,11 +439,11 @@ async function startIntro() {
 // ---------------------------------------------------------------- UI
 function levelChip() {
   if (!level) return;
-  let txt = introAd ? t('intro.hud') : level.n === 0 ? t('intro.real') : t('level', { n: level.n });
-  if (level.stages.length > 1) txt += ' · ' + t('stage', { a: stageIdx + 1, b: level.stages.length });
+  let txt = introAd ? t('intro.hud') : level.mode === 'endless' ? `${t('endless')} · ${level.score}` : level.mode === 'daily' ? t('daily.ch') : level.n === 0 ? t('intro.real') : t('level', { n: level.n });
+  if (level.stages.length > 1 && level.mode !== 'endless') txt += ' · ' + t('stage', { a: stageIdx + 1, b: level.stages.length });
   $('hud-level').textContent = txt;
 }
-const screens = ['screen-home', 'screen-won', 'screen-lost', 'screen-intro', 'screen-shop', 'screen-hintbuy', 'screen-settings', 'screen-daily'];
+const screens = ['screen-album', 'screen-ach', 'screen-home', 'screen-won', 'screen-lost', 'screen-intro', 'screen-shop', 'screen-hintbuy', 'screen-settings', 'screen-daily'];
 function showScreen(id) { for (const s of screens) $(s).hidden = s !== id; }
 function updateCoins() { $('hud-coins').textContent = save.coins; $('home-coins').textContent = save.coins; }
 function updateHints() { $('hint-count').textContent = save.hints > 0 ? save.hints : '+'; }
@@ -416,7 +467,68 @@ function goHome() {
   showScreen('screen-home');
   renderMap();
   $('shop-badge').hidden = !OUTFITS.some((o) => !save.owned.includes(o.id) && o.price <= save.coins);
+  $('dailych-badge').hidden = save.dailyCh === dayKey(new Date()) || !save.seenIntro;
+  $('btn-dailych').classList.toggle('done', save.dailyCh === dayKey(new Date()));
+  $('ach-badge').hidden = !ACH.some((a) => !save.ach[a.id] && achValue(a) >= a.goal);
   if (save.seenIntro && dailyReady()) openDaily();
+}
+
+// fail album
+const HZ_ICON = { lava: '🌋', shark: '🦈', bees: '🐝', fire: '🔥', bear: '🐻', ghost: '👻', cold: '❄️', flood: '🌊', bomb: '💣', thief: '🦹', dragon: '🐉', vampire: '🧛', desert: '🏜️', meteor: '☄️', dino: '🦖', snake: '🐍', alien: '🛸', tornado: '🌪️', carsink: '🚗', airballoon: '🎈', boulder: '🪨', spider: '🕷️', mice: '🐭', zombie: '🧟', lion: '🦁' };
+const albumCount = () => ENDINGS.filter((e) => save.album[e.key]).length;
+function renderAlbum() {
+  const got = albumCount();
+  $('album-count').textContent = `${got}/${ENDINGS.length}`;
+  $('album-bar').style.width = (got / ENDINGS.length) * 100 + '%';
+  $('album-joke').textContent = t('album.help');
+  $('album-list').innerHTML = HAZARD_IDS.map((h) => `<div class="alb-row"><span class="hz" style="font-size:28px;line-height:34px;text-align:center">${HZ_ICON[h] || '?'}</span><div class="slots">${ENDINGS.filter((e) => e.h === h).map((e) => `<button type="button" class="slot ${save.album[e.key] ? 'got' : ''}" data-key="${e.key}">${save.album[e.key] ? toolSvg(e.tool, 30) : '?'}</button>`).join('')}</div></div>`).join('');
+  for (const b of $('album-list').querySelectorAll('.slot')) b.addEventListener('click', () => {
+    const e = ENDINGS.find((x) => x.key === b.dataset.key);
+    $('album-joke').textContent = save.album[e.key] ? t('fail.' + e.type) : t('album.unknown');
+    sfx.tap();
+  });
+}
+
+// awards
+const ACH = [];
+const tiers = (kind, goals, coins) => goals.forEach((g, i) => ACH.push({ id: kind + g, kind, goal: g, coins: coins[i] }));
+tiers('lv', [10, 25, 50, 100], [50, 100, 200, 400]);
+tiers('stars', [30, 90, 240], [60, 150, 300]);
+tiers('perfect', [10, 40], [80, 250]);
+tiers('album', [10, 20, ENDINGS.length], [50, 150, 500]);
+tiers('endless', [10, 25, 50], [50, 120, 250]);
+tiers('daily', [3, 7, 30], [60, 150, 500]);
+tiers('outfits', [3, 8], [80, 300]);
+function achValue(a) {
+  const st = Object.values(save.stars);
+  switch (a.kind) {
+    case 'lv': return save.level - 1;
+    case 'stars': return st.reduce((x, y) => x + y, 0);
+    case 'perfect': return st.filter((x) => x >= 3).length;
+    case 'album': return albumCount();
+    case 'endless': return save.endlessBest;
+    case 'daily': return save.dailyCount;
+    case 'outfits': return save.owned.length;
+    default: return 0;
+  }
+}
+function renderAch() {
+  $('ach-coins').textContent = save.coins;
+  const order = ACH.slice().sort((a, b) => (!!save.ach[a.id] - !!save.ach[b.id]) || (achValue(b) >= b.goal) - (achValue(a) >= a.goal));
+  $('ach-list').innerHTML = order.map((a) => {
+    const v = Math.min(a.goal, achValue(a));
+    const done = save.ach[a.id];
+    const ready = !done && v >= a.goal;
+    return `<div class="ach ${done ? 'done' : ''}"><b>${t('ach.' + a.kind, { g: a.goal })}</b><small>${v}/${a.goal} · <span class="coin-icon" style="display:inline-block;width:12px;height:12px;vertical-align:-1px"></span> ${a.coins}</small><div class="progress"><i style="width:${(v / a.goal) * 100}%"></i></div>${ready ? `<button type="button" class="btn btn-gold" data-id="${a.id}">${t('ach.claim')}</button>` : done ? `<span style="grid-row:1/span 3;grid-column:2;font-weight:800">✓</span>` : ''}</div>`;
+  }).join('');
+  for (const b of $('ach-list').querySelectorAll('button[data-id]')) b.addEventListener('click', () => {
+    const a = ACH.find((x) => x.id === b.dataset.id);
+    save.ach[a.id] = 1;
+    save.coins += a.coins;
+    writeSave(); updateCoins(); sfx.buy();
+    track('ach_claim', { id: a.id });
+    renderAch();
+  });
 }
 
 // level path on the home screen
@@ -519,8 +631,16 @@ function renderSettings() {
 const on = (id, fn) => $(id).addEventListener('click', (e) => { e.stopPropagation(); unlockAudio(); fn(); });
 on('btn-play', () => { sfx.tap(); if (!save.seenIntro && save.level <= 1) startIntro(); else startLevel(save.level); });
 on('btn-intro-go', () => { sfx.tap(); save.seenIntro = 1; writeSave(); startLevel(0); });
-on('btn-next', () => { sfx.tap(); startLevel(level.n === 0 ? 1 : level.n + 1); });
-on('btn-retry', () => { sfx.tap(); startLevel(level.n); });
+on('btn-next', () => { sfx.tap(); if (level.mode === 'daily') goHome(); else startLevel(level.n === 0 ? 1 : level.n + 1); });
+on('btn-retry', () => { sfx.tap(); if (level.mode === 'endless') startLevel(-1, endlessSpec()); else if (level.mode === 'daily') startLevel(-2, dailySpec()); else startLevel(level.n); });
+on('btn-endless', () => { sfx.tap(); startLevel(-1, endlessSpec()); });
+on('btn-dailych', () => { sfx.tap(); startLevel(-2, dailySpec()); });
+on('btn-album', () => { sfx.tap(); renderAlbum(); showScreen('screen-album'); });
+on('btn-album-close', () => { sfx.tap(); goHome(); });
+on('btn-ach', () => { sfx.tap(); renderAch(); showScreen('screen-ach'); });
+on('btn-ach-close', () => { sfx.tap(); goHome(); });
+on('promo-nfa', () => { track('promo_click', { game: 'notafakead' }); openLink(storeLink('notafakead')); });
+on('promo-tower', () => { track('promo_click', { game: 'tower' }); openLink(storeLink('tower')); });
 on('btn-lost-home', () => { sfx.tap(); goHome(); });
 on('btn-home', () => { if (state === 'acting' || introAd || paused) return; sfx.tap(); goHome(); });
 on('btn-hint', () => {
@@ -639,6 +759,9 @@ window.__choices = {
   goHome: () => goHome(),
   setSpeed: (s) => (speed = s),
   start: (n) => startLevel(n),
+  endless: () => startLevel(-1, endlessSpec()),
+  daily: () => startLevel(-2, dailySpec()),
+  endings: ENDINGS,
   pickCorrect: () => { const b = [...$('choices').children].find((x) => x.dataset.tool === HAZARDS[stage.hazard].correct); b && pick(b.dataset.tool, b); },
   hazardIds: HAZARD_IDS,
   optionsFor: (id) => [HAZARDS[id].correct, ...Object.keys(HAZARDS[id].wrong)],
