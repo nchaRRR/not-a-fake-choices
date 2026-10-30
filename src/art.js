@@ -73,11 +73,27 @@ export const OUTFITS = [
   { id: 'astro', price: 2000, shirt: '#e6ecf4', pants: '#c8d2e0', hair: '#6b3f22', hat: `<circle cx="0" cy="-118" r="38" fill="#bfeaff" opacity="0.35" ${H}/><path d="M-20 -146 q10 -6 20 -4" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="-6" y="-166" width="12" height="12" rx="3" fill="#e8453c" ${H}/>` },
   { id: 'king', price: 3500, shirt: '#8a78f0', pants: '#4b3a8a', hair: '#ffd34d', hat: `<path d="M-24 -138 L-26 -168 L-12 -152 L0 -172 L12 -152 L26 -168 L24 -138 Z" fill="#ffbe2e" ${H}/><circle cx="0" cy="-150" r="4" fill="#e8453c"/>` },
 ];
+// Pets stand beside the hero (or sit on his shoulder) and go wherever he goes.
+export const PETS = [
+  { id: 'none', price: 0, art: '' },
+  { id: 'chick', price: 250, art: `<g transform="translate(46 0)"><path d="M-6 0 v-6 M6 0 v-6" stroke="${INK}" stroke-width="3"/><circle cy="-18" r="14" fill="#ffd34d" ${H}/><circle cx="-5" cy="-21" r="2.5" fill="${INK}"/><path d="M-13 -17 l-7 3 l7 2 Z" fill="#ff8a2e" stroke="${INK}" stroke-width="2"/><path d="M4 -32 q2 -8 8 -6" fill="none" stroke="${INK}" stroke-width="3"/></g>` },
+  { id: 'dog', price: 400, art: '<g transform="translate(26 -44) scale(0.46)" class="pet-tool" data-tool="dog"></g>' },
+  { id: 'cat', price: 400, art: '<g transform="translate(26 -44) scale(0.46)" class="pet-tool" data-tool="cat"></g>' },
+  { id: 'parrot', price: 700, art: `<g transform="translate(30 -96)"><path d="M6 6 q10 18 4 30" fill="none" stroke="#2f7cf6" stroke-width="8" stroke-linecap="round"/><ellipse cx="0" cy="0" rx="11" ry="14" fill="#e8453c" ${H}/><circle cx="2" cy="-14" r="9" fill="#e8453c" ${H}/><path d="M-6 -14 q-8 2 -4 8 l4 -3 Z" fill="#ffd34d" stroke="${INK}" stroke-width="2"/><circle cx="1" cy="-16" r="2" fill="${INK}"/><path d="M4 -2 q8 4 6 12" fill="none" stroke="#2eb872" stroke-width="5" stroke-linecap="round"/></g>` },
+];
+let pet = PETS[0];
+export function setPet(id) { pet = PETS.find((p) => p.id === id) || PETS[0]; }
+
 let outfit = OUTFITS[0];
 export function setOutfit(id) { outfit = OUTFITS.find((o) => o.id === id) || OUTFITS[0]; }
 
-export function makeHero(o = outfit) {
+export function makeHero(o = outfit, p = pet) {
   const h = g({ class: 'hero', style: `--skin:#ffd2b0;--shirt:${o.shirt};--pants:${o.pants};--hair:${o.hair}` }, HERO);
+  if (p && p.art) {
+    const pg = g({ class: 'h-pet' }, p.art);
+    for (const t of pg.querySelectorAll('.pet-tool')) t.innerHTML = TOOLS[t.dataset.tool];
+    if (p.id === 'parrot') h.appendChild(pg); else h.insertBefore(pg, h.firstChild);
+  }
   h.outfit = o;
   h.querySelector('.h-hat').innerHTML = o.hat;
   h.arms = [h.querySelector('.h-arm-l'), h.querySelector('.h-arm-r')];

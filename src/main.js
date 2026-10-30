@@ -1,7 +1,8 @@
 // Not a Fake Ad: Choices — the "pick the right item to save him" puzzles from the ads, made playable.
 // Each level is one to three dangers in a row. For each, tap the one item (of two or three) that saves
 // the hero before the bar runs out. Wrong picks end the way the ads always end.
-import { el, g, place, makeHero, setFace, setArms, paintHero, toolSvg, toolNode, OUTFITS, setOutfit } from './art.js';
+import { el, g, place, makeHero, setFace, setArms, paintHero, toolSvg, toolNode, OUTFITS, setOutfit, PETS, setPet } from './art.js';
+import { joke } from './jokes.js';
 import { showRewarded } from './ads.js';
 import { storeLink, openLink } from './promo.js';
 import { HAZARDS, HAZARD_IDS } from './hazards.js';
@@ -13,12 +14,20 @@ import { t, getLang, setLang, applyStatic, sayWord } from './i18n.js';
 const $ = (id) => document.getElementById(id);
 const SAVE_KEY = 'nfa-choices-v1';
 const save = (() => {
-  const base = { level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0 };
+  const base = { level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0, pet: 'none', pets: ['none'], chests: {}, vibe: true };
   try { return { ...base, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; } catch (e) { return base; }
 })();
 const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* session only */ } };
 setMuted(save.muted);
 setOutfit(save.outfit);
+setPet(save.pet);
+const buzz = (ms) => { if (save.vibe && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) { /* not supported */ } };
+
+// Weekly event: changes every Monday, cycles through four twists.
+const EVENTS = ['gold', 'speed', 'freehint', 'album'];
+let eventId = EVENTS[Math.floor((Date.now() / 864e5 + 3) / 7) % EVENTS.length];
+const coinMult = () => (eventId === 'gold' ? 2 : eventId === 'speed' ? 1.5 : 1);
+const timeMult = () => (eventId === 'speed' ? 0.8 : 1);
 const HINT_PACK = 100;
 
 // ---------------------------------------------------------------- levels
@@ -81,8 +90,16 @@ function dailySpec() {
 }
 
 // Every distinct fail ending (danger + the way it goes wrong), for the album.
-export const ENDINGS = HAZARD_IDS.flatMap((h) => [...new Set(Object.values(HAZARDS[h].wrong))].map((type) => ({ h, type, key: h + ':' + type, tool: Object.keys(HAZARDS[h].wrong).find((k) => HAZARDS[h].wrong[k] === type) })));
-const ALBUM_COINS = 15;
+export const ENDINGS = HAZARD_IDS.flatMap((h) => Object.keys(HAZARDS[h].wrong).map((tool) => ({ h, tool, type: HAZARDS[h].wrong[tool], key: h + ':' + tool })));
+const albumCoins = () => (eventId === 'album' ? 45 : 15);
+// older saves stored one ending per kind of fail; give them the first item of that kind
+for (const k of Object.keys(save.album)) {
+  if (ENDINGS.some((e) => e.key === k)) continue;
+  const [h, type] = k.split(':');
+  const e = ENDINGS.find((x) => x.h === h && x.type === type);
+  delete save.album[k];
+  if (e) save.album[e.key] = 1;
+}
 
 // ---------------------------------------------------------------- tweens & particles
 let speed = 1;
@@ -232,6 +249,7 @@ let gen = 0;
 let introAd = false;
 let taunt = '';
 let paused = false;
+let pendingChest = 0;
 let run = { fracs: [], hint: false, revived: false };
 
 function startLevel(n, spec) {
@@ -267,6 +285,7 @@ function buildStage(quiet = false) {
   ctx = makeCtx(layer);
   hz.setup(ctx);
   stageT = 0;
+  stage.time = stage.baseTime ? stage.baseTime * timeMult() : (stage.baseTime = stage.time) * timeMult();
   state = 'choose';
   levelChip();
   // choices
@@ -294,6 +313,7 @@ async function pick(id, btn) {
   for (const b of $('choices').children) { b.disabled = true; if (b !== btn) b.classList.add('dim'); }
   btn.classList.add('picked');
   sfx.tap();
+  buzz(12);
   // the item flies up from its card to the hero
   const [hx, hy] = heroXY();
   const flying = ctx.tool(id, 200, 560, 0.5);
@@ -321,12 +341,13 @@ async function pick(id, btn) {
     else won();
   } else {
     const type = hz.wrong[id];
-    const key = stage.hazard + ':' + type;
+    const key = stage.hazard + ':' + id;
     const fresh = !introAd && !save.album[key];
-    if (fresh) { save.album[key] = 1; save.coins += ALBUM_COINS; writeSave(); }
+    if (fresh) { save.album[key] = 1; save.coins += albumCoins(); writeSave(); }
+    buzz(60);
     await hz.fails[type].call(hz, ctx);
     if (my !== gen) return;
-    lost(type, fresh);
+    lost(type, fresh, id);
   }
 }
 
@@ -340,7 +361,8 @@ function stamp(text, good) {
   s.style.animation = '';
 }
 
-async function lost(type, fresh = false) {
+async function lost(type, fresh = false, tool = '') {
+  buzz([90, 60, 90]);
   state = 'lost';
   const my = gen;
   sfx.lose();
@@ -354,16 +376,16 @@ async function lost(type, fresh = false) {
     showScreen('screen-intro');
     return;
   }
-  $('lost-line').textContent = t('fail.' + type);
+  $('lost-line').textContent = (tool && joke(stage.hazard, tool, getLang())) || t('fail.' + type);
   $('btn-revive').hidden = level.n === 0 || run.revived;
   $('lost-new').hidden = !fresh;
-  $('lost-new').textContent = t('album.new', { c: ALBUM_COINS });
+  $('lost-new').textContent = t('album.new', { c: albumCoins() });
   const sc = $('lost-score');
   sc.hidden = level.mode !== 'endless';
   if (level.mode === 'endless') {
     const best = level.score > save.endlessBest;
     save.endlessBest = Math.max(save.endlessBest, level.score);
-    save.coins += (level.score - level.paid) * 3;
+    save.coins += Math.round((level.score - level.paid) * 3 * coinMult());
     level.paid = level.score;
     writeSave();
     sc.textContent = (best ? t('endless.best') + ' ' : '') + t('endless.score', { n: level.score, b: save.endlessBest });
@@ -382,7 +404,8 @@ async function won() {
   if (run.revived) stars = 1;
   const today = dayKey(new Date());
   const dailyFirst = level.mode === 'daily' && save.dailyCh !== today;
-  const reward = level.mode === 'daily' ? (dailyFirst ? 100 : 0) : level.n === 0 ? 20 : 10 + Math.floor(level.n * 1.5) + stars * 5;
+  const reward = Math.round((level.mode === 'daily' ? (dailyFirst ? 100 : 0) : level.n === 0 ? 20 : 10 + Math.floor(level.n * 1.5) + stars * 5) * (level.n === 0 ? 1 : coinMult()));
+  pendingChest = level.n > 0 && level.n % 10 === 0 && !save.chests[level.n] ? level.n : 0;
   if (dailyFirst) { save.dailyCh = today; save.dailyCount++; save.hints++; }
   save.coins += reward;
   if (level.n > 0) {
@@ -397,6 +420,8 @@ async function won() {
   $('won-title').textContent = daily ? t('daily.won') : level.n === 0 ? t('intro.won') : t('won.title', { n: level.n });
   $('won-line').textContent = daily ? (dailyFirst ? t('daily.reward') : t('daily.again')) : level.n === 0 ? t('won.line') : t('won.stars' + stars);
   $('btn-next').textContent = daily ? t('home') : t('next');
+  $('btn-won-home').hidden = daily;
+  buzz(25);
   $('won-coins').textContent = '+' + reward;
   updateCoins();
   const box = $('won-stars');
@@ -443,10 +468,10 @@ function levelChip() {
   if (level.stages.length > 1 && level.mode !== 'endless') txt += ' · ' + t('stage', { a: stageIdx + 1, b: level.stages.length });
   $('hud-level').textContent = txt;
 }
-const screens = ['screen-album', 'screen-ach', 'screen-home', 'screen-won', 'screen-lost', 'screen-intro', 'screen-shop', 'screen-hintbuy', 'screen-settings', 'screen-daily'];
+const screens = ['screen-chest', 'screen-album', 'screen-ach', 'screen-home', 'screen-won', 'screen-lost', 'screen-intro', 'screen-shop', 'screen-hintbuy', 'screen-settings', 'screen-daily'];
 function showScreen(id) { for (const s of screens) $(s).hidden = s !== id; }
 function updateCoins() { $('hud-coins').textContent = save.coins; $('home-coins').textContent = save.coins; }
-function updateHints() { $('hint-count').textContent = save.hints > 0 ? save.hints : '+'; }
+function updateHints() { $('hint-count').textContent = eventId === 'freehint' ? '∞' : save.hints > 0 ? save.hints : '+'; }
 function goHome() {
   gen++;
   state = 'home';
@@ -467,10 +492,14 @@ function goHome() {
   showScreen('screen-home');
   renderMap();
   $('shop-badge').hidden = !OUTFITS.some((o) => !save.owned.includes(o.id) && o.price <= save.coins);
+  $('event-chip').textContent = t('event.' + eventId);
   $('dailych-badge').hidden = save.dailyCh === dayKey(new Date()) || !save.seenIntro;
   $('btn-dailych').classList.toggle('done', save.dailyCh === dayKey(new Date()));
   $('ach-badge').hidden = !ACH.some((a) => !save.ach[a.id] && achValue(a) >= a.goal);
   if (save.seenIntro && dailyReady()) openDaily();
+  else {
+    for (let n = 10; n < save.level; n += 10) if (!save.chests[n]) { pendingChest = n; openChestScreen(() => goHome()); break; }
+  }
 }
 
 // fail album
@@ -484,7 +513,7 @@ function renderAlbum() {
   $('album-list').innerHTML = HAZARD_IDS.map((h) => `<div class="alb-row"><span class="hz" style="font-size:28px;line-height:34px;text-align:center">${HZ_ICON[h] || '?'}</span><div class="slots">${ENDINGS.filter((e) => e.h === h).map((e) => `<button type="button" class="slot ${save.album[e.key] ? 'got' : ''}" data-key="${e.key}">${save.album[e.key] ? toolSvg(e.tool, 30) : '?'}</button>`).join('')}</div></div>`).join('');
   for (const b of $('album-list').querySelectorAll('.slot')) b.addEventListener('click', () => {
     const e = ENDINGS.find((x) => x.key === b.dataset.key);
-    $('album-joke').textContent = save.album[e.key] ? t('fail.' + e.type) : t('album.unknown');
+    $('album-joke').textContent = save.album[e.key] ? joke(e.h, e.tool, getLang()) : t('album.unknown');
     sfx.tap();
   });
 }
@@ -495,7 +524,7 @@ const tiers = (kind, goals, coins) => goals.forEach((g, i) => ACH.push({ id: kin
 tiers('lv', [10, 25, 50, 100], [50, 100, 200, 400]);
 tiers('stars', [30, 90, 240], [60, 150, 300]);
 tiers('perfect', [10, 40], [80, 250]);
-tiers('album', [10, 20, ENDINGS.length], [50, 150, 500]);
+tiers('album', [10, 30, 50, ENDINGS.length], [50, 150, 300, 600]);
 tiers('endless', [10, 25, 50], [50, 120, 250]);
 tiers('daily', [3, 7, 30], [60, 150, 500]);
 tiers('outfits', [3, 8], [80, 300]);
@@ -540,14 +569,15 @@ function renderMap() {
     const cls = n < cur ? 'done' : n === cur ? 'now' : 'lock';
     const st = save.stars[n] || 0;
     const multi = levelSpec(n).stages.length;
-    html += `<div class="node ${cls}">${multi > 1 ? `<span class="boss">×${multi}</span>` : ''}<b>${n}</b><i>${n < cur ? '★'.repeat(st) + '☆'.repeat(3 - st) : ''}</i></div>`;
+    const chest = n % 10 === 0 && !save.chests[n] ? '<span class="chest">🎁</span>' : '';
+    html += `<div class="node ${cls}">${chest || (multi > 1 ? `<span class="boss">×${multi}</span>` : '')}<b>${n}</b><i>${n < cur ? '★'.repeat(st) + '☆'.repeat(3 - st) : ''}</i></div>`;
   }
   $('map').innerHTML = html;
 }
 
 // shop
-function heroPreview(o) {
-  const h = makeHero(o);
+function heroPreview(o, p) {
+  const h = makeHero(o, p);
   setArms(h, 'down');
   return `<svg viewBox="-62 -200 124 210" aria-hidden="true">${h.outerHTML}</svg>`;
 }
@@ -561,6 +591,27 @@ function renderShop() {
     return `<button type="button" class="outfit ${on ? 'on' : ''} ${own ? '' : 'locked'}" data-id="${o.id}">${heroPreview(o)}<span class="name">${t('outfit.' + o.id)}</span><span class="price">${price}</span></button>`;
   }).join('');
   for (const b of $('shop-grid').children) b.addEventListener('click', () => buyOutfit(b.dataset.id, b));
+  const cur = OUTFITS.find((o) => o.id === save.outfit) || OUTFITS[0];
+  $('pet-grid').innerHTML = PETS.map((p) => {
+    const own = save.pets.includes(p.id);
+    const on = save.pet === p.id;
+    const price = on ? t('shop.wearing') : own ? t('shop.owned') : `<span class="coin-icon"></span>${p.price}`;
+    return `<button type="button" class="outfit ${on ? 'on' : ''} ${own ? '' : 'locked'}" data-id="${p.id}">${heroPreview(cur, p)}<span class="name">${t('pet.' + p.id)}</span><span class="price">${price}</span></button>`;
+  }).join('');
+  for (const b of $('pet-grid').children) b.addEventListener('click', () => buyPet(b.dataset.id, b));
+}
+function buyPet(id, btn) {
+  const p = PETS.find((x) => x.id === id);
+  if (!save.pets.includes(id)) {
+    if (save.coins < p.price) { sfx.lose(); btn.querySelector('.price').textContent = t('shop.poor'); return; }
+    save.coins -= p.price;
+    save.pets.push(id);
+    sfx.buy();
+    track('pet_buy', { id });
+  } else sfx.tap();
+  save.pet = id;
+  setPet(id);
+  writeSave(); updateCoins(); renderShop();
 }
 function buyOutfit(id, btn) {
   const o = OUTFITS.find((x) => x.id === id);
@@ -626,12 +677,44 @@ function claimDaily() {
 function renderSettings() {
   $('tg-sound').setAttribute('aria-checked', String(!save.muted));
   $('tg-music').setAttribute('aria-checked', String(save.music));
+  $('tg-vibe').setAttribute('aria-checked', String(save.vibe));
   $('btn-lang').textContent = getLang() === 'tr' ? 'Türkçe' : 'English';
 }
 const on = (id, fn) => $(id).addEventListener('click', (e) => { e.stopPropagation(); unlockAudio(); fn(); });
 on('btn-play', () => { sfx.tap(); if (!save.seenIntro && save.level <= 1) startIntro(); else startLevel(save.level); });
 on('btn-intro-go', () => { sfx.tap(); save.seenIntro = 1; writeSave(); startLevel(0); });
-on('btn-next', () => { sfx.tap(); if (level.mode === 'daily') goHome(); else startLevel(level.n === 0 ? 1 : level.n + 1); });
+const afterWin = (home) => { if (home || level.mode === 'daily') goHome(); else startLevel(level.n === 0 ? 1 : level.n + 1); };
+let chestThen = null;
+function openChestScreen(then) {
+  chestThen = then;
+  $('chest-icon').classList.remove('open');
+  $('chest-icon').textContent = '🎁';
+  $('chest-reward').hidden = true;
+  $('btn-chest').textContent = t('chest.open');
+  $('chest-title').textContent = t('chest.title', { n: pendingChest });
+  showScreen('screen-chest');
+}
+on('btn-chest', () => {
+  if (pendingChest) {
+    const n = pendingChest;
+    const c = 100 + n * 3;
+    save.coins += c; save.hints += 2; save.chests[n] = 1; pendingChest = 0;
+    writeSave(); updateCoins(); updateHints();
+    sfx.win(); buzz([30, 40, 30]); confetti(40);
+    $('chest-icon').textContent = '💰';
+    $('chest-icon').classList.add('open');
+    $('chest-reward').textContent = t('chest.reward', { c, h: 2 });
+    $('chest-reward').hidden = false;
+    $('btn-chest').textContent = t('chest.go');
+    track('chest_open', { level: n });
+    return;
+  }
+  sfx.tap();
+  const f = chestThen; chestThen = null;
+  if (f) f();
+});
+on('btn-next', () => { sfx.tap(); if (pendingChest) openChestScreen(() => afterWin(false)); else afterWin(false); });
+on('btn-won-home', () => { sfx.tap(); if (pendingChest) openChestScreen(() => afterWin(true)); else afterWin(true); });
 on('btn-retry', () => { sfx.tap(); if (level.mode === 'endless') startLevel(-1, endlessSpec()); else if (level.mode === 'daily') startLevel(-2, dailySpec()); else startLevel(level.n); });
 on('btn-endless', () => { sfx.tap(); startLevel(-1, endlessSpec()); });
 on('btn-dailych', () => { sfx.tap(); startLevel(-2, dailySpec()); });
@@ -645,7 +728,7 @@ on('btn-lost-home', () => { sfx.tap(); goHome(); });
 on('btn-home', () => { if (state === 'acting' || introAd || paused) return; sfx.tap(); goHome(); });
 on('btn-hint', () => {
   if (state !== 'choose' || introAd) return;
-  if (save.hints <= 0) {
+  if (save.hints <= 0 && eventId !== 'freehint') {
     paused = true;
     $('btn-hb-buy').textContent = t('shop.buyhints', { p: HINT_PACK });
     showScreen('screen-hintbuy');
@@ -654,10 +737,10 @@ on('btn-hint', () => {
   useHint();
 });
 function useHint() {
-  if (state !== 'choose' || save.hints <= 0) return;
+  if (state !== 'choose' || (save.hints <= 0 && eventId !== 'freehint')) return;
   const b = [...$('choices').children].find((x) => x.dataset.tool === HAZARDS[stage.hazard].correct);
   if (!b || b.classList.contains('hint')) return;
-  save.hints--;
+  if (eventId !== 'freehint') save.hints--;
   run.hint = true;
   writeSave();
   updateHints();
@@ -668,6 +751,7 @@ on('btn-lang', () => { setLang(getLang() === 'tr' ? 'en' : 'tr'); sfx.tap(); ren
 on('btn-settings', () => { sfx.tap(); renderSettings(); showScreen('screen-settings'); });
 on('btn-settings-close', () => { sfx.tap(); goHome(); });
 on('tg-sound', () => { save.muted = !save.muted; setMuted(save.muted); writeSave(); renderSettings(); sfx.tap(); });
+on('tg-vibe', () => { save.vibe = !save.vibe; writeSave(); renderSettings(); buzz(30); sfx.tap(); });
 on('tg-music', () => { save.music = !save.music; setMusicEnabled(save.music); if (save.music) startMusic(); writeSave(); renderSettings(); sfx.tap(); });
 on('btn-shop', () => { sfx.tap(); renderShop(); showScreen('screen-shop'); });
 on('btn-shop-close', () => { sfx.tap(); goHome(); });
@@ -756,6 +840,7 @@ window.__choices = {
   get level() { return level; },
   get stage() { return stage; },
   get save() { return save; },
+  setEvent: (e) => { eventId = e; updateHints(); },
   goHome: () => goHome(),
   setSpeed: (s) => (speed = s),
   start: (n) => startLevel(n),

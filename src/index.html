@@ -210,6 +210,12 @@
   .promo b { display: block; font-family: var(--font-display); font-size: 17px; line-height: 1.1; }
   .promo small { font-weight: 700; color: var(--ink-soft); }
   @media (max-height: 700px) { .logo { font-size: clamp(40px, 11vw, 60px); } .home-bottom { margin-top: 1vh; gap: 10px; } .tagline { display: none; } }
+
+  .node .chest { position: absolute; top: -14px; right: -8px; font-size: 18px; animation: bob 1s ease-in-out infinite; }
+  .event { max-width: 32ch; text-align: center; font-weight: 800; font-size: 14px; color: #fff; background: var(--lilac); border: 3px solid var(--ink); border-radius: 12px; padding: 4px 12px; box-shadow: 0 3px 0 var(--ink); transform: rotate(1.5deg); text-wrap: balance; }
+  #chest-icon { font-size: 96px; line-height: 1; display: block; animation: wobble 0.9s ease-in-out infinite; }
+  #chest-icon.open { animation: newtag 0.4s cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes wobble { 25% { transform: rotate(-8deg) scale(1.05); } 75% { transform: rotate(8deg) scale(1.05); } }
 </style>
 
 <svg id="stage" viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene">
@@ -249,6 +255,7 @@
   <span class="ad-tag" data-i18n="sponsored">Sponsored?</span>
   <h1 class="logo">Not a<br><span class="strike">Fake</span> Ad<span class="sub">CHOICES</span></h1>
   <p class="tagline" data-i18n="tagline">Save the guy from those ads. Pick right.</p>
+  <p class="event" id="event-chip"></p>
   <div class="home-bottom">
     <div id="map" aria-label="Levels"></div>
     <button class="btn btn-big btn-green" id="btn-play" type="button">Play</button>
@@ -278,6 +285,7 @@
     <p id="won-line"></p>
     <div class="won-coins"><span class="coin-icon" aria-hidden="true"></span><span id="won-coins">+10</span></div>
     <button class="btn btn-big btn-green" id="btn-next" type="button" data-i18n="next">Next level</button>
+    <button class="btn btn-plain" id="btn-won-home" type="button" data-i18n="homepage">Home</button>
   </div>
 </section>
 
@@ -298,6 +306,8 @@
     <div class="card-head"><h2 data-i18n="shop.title">Shop</h2><span class="chip"><span class="coin-icon" aria-hidden="true"></span><span id="shop-coins">0</span></span></div>
     <p class="sec-title" data-i18n="shop.outfits">Outfits</p>
     <div id="shop-grid"></div>
+    <p class="sec-title" data-i18n="shop.pets">Pets</p>
+    <div id="pet-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px"></div>
     <p class="sec-title" data-i18n="shop.hints">Hints</p>
     <div class="row-btns">
       <button class="btn btn-sm btn-gold" id="btn-buy-hints" type="button"></button>
@@ -322,6 +332,7 @@
     <h2 data-i18n="settings">Settings</h2>
     <div class="set-row"><span data-i18n="set.sound">Sound</span><button class="toggle" id="tg-sound" type="button" role="switch" aria-checked="true" aria-label="Sound"></button></div>
     <div class="set-row"><span data-i18n="set.music">Music</span><button class="toggle" id="tg-music" type="button" role="switch" aria-checked="true" aria-label="Music"></button></div>
+    <div class="set-row"><span data-i18n="set.vibe">Vibration</span><button class="toggle" id="tg-vibe" type="button" role="switch" aria-checked="true" aria-label="Vibration"></button></div>
     <div class="set-row"><span data-i18n="set.lang">Language</span><button class="lang-btn" id="btn-lang" type="button">Türkçe</button></div>
     <p class="sec-title" data-i18n="promo.title">More from Nimoriq</p>
     <button class="promo" id="promo-nfa" type="button"><span class="pi" style="background:#bfe0ff">🏃</span><span><b>Not a Fake Ad</b><small data-i18n="promo.nfa">Run through the gates. For real.</small></span></button>
@@ -355,6 +366,16 @@
     <div class="card-head"><h2 data-i18n="ach.title">Awards</h2><span class="chip"><span class="coin-icon" aria-hidden="true"></span><span id="ach-coins">0</span></span></div>
     <div id="ach-list"></div>
     <button class="btn btn-plain" id="btn-ach-close" type="button" data-i18n="close">Close</button>
+  </div>
+</section>
+
+<section id="screen-chest" class="screen screen-dim" hidden>
+  <div class="card">
+    <span class="ad-tag" data-i18n="chest.tag">Bonus</span>
+    <h2 id="chest-title">Chest</h2>
+    <span id="chest-icon" aria-hidden="true">🎁</span>
+    <p id="chest-reward" class="score-line" hidden></p>
+    <button class="btn btn-big btn-gold" id="btn-chest" type="button">Open</button>
   </div>
 </section>
 
