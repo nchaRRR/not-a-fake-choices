@@ -1,0 +1,298 @@
+<title>Not a Fake Ad: Choices</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;700;800&display=swap">
+<style>
+  /* Layout: cartoon scene on top, the choices at the bottom, sticker cards for screens (series look). */
+  :root {
+    --ink: #2b2140;
+    --ink-soft: #5d5172;
+    --paper: #fff7ef;
+    --line: #ecd9cb;
+    --blue: #2f7cf6;
+    --blue-deep: #1d5bc4;
+    --red: #e8453c;
+    --green: #2eb872;
+    --green-deep: #1f8a54;
+    --gold: #ffbe2e;
+    --gold-deep: #c98a00;
+    --lilac: #8a78f0;
+    --font-display: "Baloo 2", ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+    --font-body: "Nunito", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --choices-h: 178px;
+    color-scheme: light;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; overflow: hidden; margin: 0; }
+  body { background: #ffe9d6; color: var(--ink); font-family: var(--font-body); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+
+  #stage { position: fixed; left: 0; right: 0; top: 0; bottom: calc(var(--choices-h) + env(safe-area-inset-bottom, 0px)); width: 100%; height: calc(100% - var(--choices-h) - env(safe-area-inset-bottom, 0px)); display: block; }
+  #stage.shaking { animation: shake 0.3s linear; }
+  @keyframes shake { 20% { transform: translate(-6px, 3px); } 40% { transform: translate(6px, -3px); } 60% { transform: translate(-4px, -2px); } 80% { transform: translate(3px, 2px); } }
+
+  /* ---------- choices ---------- */
+  #bottom { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--choices-h) + env(safe-area-inset-bottom, 0px)); padding: 10px max(14px, env(safe-area-inset-left, 0px)) calc(env(safe-area-inset-bottom, 0px) + 14px);
+            background: var(--paper); border-top: 4px solid var(--ink); display: flex; flex-direction: column; gap: 10px; }
+  #timer { height: 14px; border: 3px solid var(--ink); border-radius: 8px; background: var(--line); overflow: hidden; flex: none; }
+  #timer i { display: block; height: 100%; width: 100%; background: var(--green); transform-origin: left; }
+  #timer.low i { background: var(--red); }
+  #choices { flex: 1; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 12px; }
+  .choice { border: 4px solid var(--ink); border-radius: 22px; background: #fff; box-shadow: 0 5px 0 var(--ink); cursor: pointer; padding: 4px; display: grid; place-items: center; position: relative; }
+  .choice svg { width: min(92px, 80%); height: auto; max-height: 100px; }
+  .choice:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+  .choice:disabled { cursor: default; }
+  .choice.picked { background: #fff2b8; }
+  .choice.dim { opacity: 0.35; }
+  .choice.hint { animation: hintglow 0.8s ease-in-out infinite; }
+  @keyframes hintglow { 50% { box-shadow: 0 0 0 6px var(--gold), 0 5px 0 var(--ink); } }
+  .choice:focus-visible { outline: 3px solid var(--lilac); outline-offset: 3px; }
+  .stage-dots { display: flex; gap: 6px; justify-content: center; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0 0 auto 0; pointer-events: none; padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+         padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .hud-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 2px 12px 2px 6px;
+          font-family: var(--font-display); font-size: 19px; line-height: 1.3; box-shadow: 0 3px 0 var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chip-level { padding: 2px 14px; }
+  .coin-icon { width: 18px; height: 18px; flex: none; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2b8 0 18%, var(--gold) 20% 62%, var(--gold-deep) 64%); box-shadow: inset 0 0 0 2px var(--gold-deep); }
+  .icon-btn { pointer-events: auto; width: 46px; height: 46px; flex: none; border-radius: 14px; border: 3px solid var(--ink); background: var(--paper); box-shadow: 0 3px 0 var(--ink); display: grid; place-items: center; cursor: pointer; padding: 0; position: relative; }
+  .icon-btn svg { width: 20px; height: 20px; fill: var(--ink); }
+  .icon-btn:active { transform: translateY(3px); box-shadow: none; }
+  .badge { position: absolute; top: -8px; right: -8px; min-width: 22px; height: 22px; border-radius: 11px; background: var(--red); color: #fff; border: 2px solid var(--ink); font-family: var(--font-display); font-size: 13px; line-height: 19px; padding: 0 5px; text-align: center; }
+  .hud-tools { display: flex; gap: 8px; }
+  #taunt { margin: 12px auto 0; width: fit-content; max-width: 92%; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 21px; line-height: 1.15;
+           color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); transform: rotate(-2deg); }
+  #ad-ribbon { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(var(--choices-h) + env(safe-area-inset-bottom, 0px) + 12px); transform: rotate(-3deg); z-index: 3; pointer-events: none; }
+  #finger { position: fixed; z-index: 30; font-size: 58px; line-height: 1; pointer-events: none; transform: translate(-30%, 10%); transition: left 0.45s ease, top 0.45s ease; filter: drop-shadow(0 3px 0 rgba(43,33,64,0.6)); }
+
+  /* FAIL / WIN stamps */
+  .stamp { position: fixed; left: 50%; top: 34%; transform: translate(-50%, -50%) rotate(-12deg); pointer-events: none; z-index: 8;
+           font-family: var(--font-display); font-weight: 800; font-size: clamp(64px, 22vw, 120px); line-height: 1; color: var(--red);
+           -webkit-text-stroke: 7px #fff; paint-order: stroke fill; border: 10px solid var(--red); border-radius: 26px; padding: 6px 26px 0; background: rgba(255, 255, 255, 0.85);
+           animation: stamp 0.35s cubic-bezier(.2,1.6,.4,1) both; }
+  .stamp.good { color: var(--green); border-color: var(--green); font-size: clamp(48px, 15vw, 84px); }
+  @keyframes stamp { from { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(2.4); } to { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1); } }
+
+  /* ---------- screens ---------- */
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; z-index: 10;
+            padding-block: calc(env(safe-area-inset-top, 0px) + 20px) calc(env(safe-area-inset-bottom, 0px) + 20px);
+            padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); overflow-y: auto; }
+  .screen-dim { background: rgba(43, 33, 64, 0.45); }
+  #screen-home { background: linear-gradient(180deg, rgba(255,233,214,0.35), rgba(255,233,214,0.75) 50%, rgba(255,247,239,0.6)); }
+  .card { width: min(100%, 380px); background: var(--paper); border: 3px solid var(--ink); border-radius: 24px; box-shadow: 0 6px 0 var(--ink); padding: 22px 18px;
+          display: flex; flex-direction: column; gap: 14px; align-items: stretch; text-align: center; }
+  .card h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 32px; line-height: 1.05; }
+  .card p { margin: 0; font-weight: 700; color: var(--ink-soft); text-wrap: balance; }
+  .ad-tag { display: inline-block; align-self: center; font-weight: 800; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; background: var(--gold); color: var(--ink);
+            border: 3px solid var(--ink); border-radius: 8px; padding: 2px 8px; transform: rotate(-3deg); }
+  .logo { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(46px, 14vw, 74px); line-height: 0.86; text-align: center; color: #fff;
+          -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; text-shadow: 0 6px 0 var(--ink); transform: rotate(-3deg); }
+  .logo .strike { position: relative; display: inline-block; color: var(--red); }
+  .logo .strike::after { content: ""; position: absolute; left: -4%; right: -4%; top: 50%; height: 8px; background: var(--ink); border-radius: 9px; transform: rotate(-8deg); }
+  .logo .sub { display: block; margin-top: 8px; font-size: 0.56em; color: var(--gold); letter-spacing: 0.03em; }
+  .tagline { margin: 0; max-width: 30ch; text-align: center; font-weight: 800; font-size: 16px; color: var(--ink); background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 6px 12px; text-wrap: balance; }
+  .home-bottom { width: min(100%, 380px); display: flex; flex-direction: column; gap: 12px; margin-top: 4vh; }
+  .home-top { position: fixed; z-index: 2; top: calc(env(safe-area-inset-top, 0px) + 12px); left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); display: flex; justify-content: space-between; align-items: center; }
+  .btn { font-family: var(--font-display); font-weight: 800; font-size: 24px; line-height: 1; border: 3px solid var(--ink); border-radius: 18px; padding: 16px 20px 13px; cursor: pointer; color: #fff;
+         background: var(--blue); box-shadow: inset 0 -5px 0 var(--blue-deep), 0 4px 0 var(--ink); }
+  .btn:active { transform: translateY(3px); box-shadow: inset 0 -3px 0 var(--blue-deep), 0 1px 0 var(--ink); }
+  .btn-big { font-size: 32px; padding: 20px; }
+  .btn-green { background: var(--green); box-shadow: inset 0 -5px 0 var(--green-deep), 0 4px 0 var(--ink); }
+  .btn-gold { background: var(--gold); color: var(--ink); box-shadow: inset 0 -5px 0 var(--gold-deep), 0 4px 0 var(--ink); }
+  .btn-plain { background: var(--paper); color: var(--ink); box-shadow: inset 0 -5px 0 var(--line), 0 4px 0 var(--ink); }
+  .btn:focus-visible, .icon-btn:focus-visible { outline: 3px solid var(--lilac); outline-offset: 3px; }
+  .won-coins { display: flex; justify-content: center; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 800; font-size: 40px; }
+  .won-coins .coin-icon { width: 30px; height: 30px; }
+  .fail-joke { font-family: var(--font-display); font-size: 20px !important; color: var(--ink) !important; }
+
+  /* stars */
+  .stars { display: flex; justify-content: center; gap: 6px; margin: -4px 0 -2px; }
+  .star { width: 54px; height: 54px; }
+  .star path { fill: var(--line); stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; }
+  .star.on path { fill: var(--gold); }
+  .star.pop { animation: starpop 0.4s cubic-bezier(.2,1.6,.4,1) both; }
+  .stars .star:nth-child(2) { transform: translateY(-10px); width: 64px; height: 64px; }
+  @keyframes starpop { from { transform: scale(0) rotate(-40deg); } to { transform: scale(1); } }
+  .stars .star:nth-child(2).pop { animation-name: starpop2; }
+  @keyframes starpop2 { from { transform: translateY(-10px) scale(0) rotate(-40deg); } to { transform: translateY(-10px) scale(1); } }
+
+  /* level map on home */
+  #map { display: flex; justify-content: center; align-items: flex-end; gap: 8px; }
+  .node { position: relative; width: 52px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .node b { width: 46px; height: 46px; border-radius: 50%; border: 3px solid var(--ink); background: var(--paper); display: grid; place-items: center;
+            font-family: var(--font-display); font-size: 20px; line-height: 1; box-shadow: 0 3px 0 var(--ink); }
+  .node.done b { background: #c9f0d8; }
+  .node.now b { width: 58px; height: 58px; font-size: 25px; background: var(--gold); animation: bob 1.2s ease-in-out infinite; }
+  .node.lock b { background: #e6dcd4; color: var(--ink-soft); }
+  .node i { font-style: normal; font-size: 13px; letter-spacing: -1px; color: var(--gold-deep); -webkit-text-stroke: 0.6px var(--ink); height: 15px; }
+  .node .boss { position: absolute; top: -10px; right: -6px; background: var(--red); color: #fff; border: 2px solid var(--ink); border-radius: 8px; font-family: var(--font-display); font-size: 12px; padding: 0 4px; line-height: 17px; }
+  .node + .node::before { content: ""; position: absolute; left: -10px; top: 50%; width: 12px; height: 4px; background: var(--ink); border-radius: 2px; }
+  @keyframes bob { 50% { transform: translateY(-4px); } }
+
+  /* shop */
+  .card-wide { width: min(100%, 440px); max-height: calc(100vh - 40px); overflow-y: auto; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card-head h2 { font-size: 28px; }
+  #shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+  .outfit { border: 3px solid var(--ink); border-radius: 18px; background: #fff; box-shadow: 0 4px 0 var(--ink); padding: 6px 6px 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; color: var(--ink); }
+  .outfit svg { width: 90px; height: 104px; }
+  .outfit .name { font-family: var(--font-display); font-size: 16px; line-height: 1.1; }
+  .outfit .price { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; font-size: 15px; }
+  .outfit.on { background: #fff2b8; }
+  .outfit.locked .price { color: var(--ink-soft); }
+  .outfit:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+  .row-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-sm { font-size: 18px; padding: 12px 10px 10px; border-radius: 14px; }
+  .sec-title { margin: 4px 0 -4px; font-family: var(--font-display); font-size: 18px; text-align: left; }
+
+  /* settings */
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-weight: 800; font-size: 18px; padding: 6px 2px; border-bottom: 2px dashed var(--line); }
+  .toggle { width: 64px; height: 36px; border-radius: 18px; border: 3px solid var(--ink); background: #e6dcd4; position: relative; cursor: pointer; padding: 0; flex: none; }
+  .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); transition: left 0.15s; }
+  .toggle[aria-checked="true"] { background: var(--green); }
+  .toggle[aria-checked="true"]::after { left: 29px; }
+  .lang-btn { font-family: var(--font-display); font-size: 18px; border: 3px solid var(--ink); border-radius: 12px; background: var(--paper); padding: 4px 14px; cursor: pointer; box-shadow: 0 3px 0 var(--ink); color: var(--ink); }
+  .small-print { font-size: 13px !important; }
+
+  /* daily reward */
+  #daily-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .day { border: 3px solid var(--ink); border-radius: 14px; background: #fff; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 800; font-size: 13px; }
+  .day b { font-family: var(--font-display); font-size: 18px; line-height: 1; display: inline-flex; align-items: center; gap: 3px; }
+  .day.got { background: #c9f0d8; opacity: 0.7; }
+  .day.today { background: var(--gold); box-shadow: 0 0 0 4px #fff2b8; }
+  .day.big { grid-column: span 2; }
+
+  /* stand-in ad */
+  #ad-overlay { position: fixed; inset: 0; z-index: 50; background: #1a1530; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px; }
+  #ad-overlay .ad-box { width: min(100%, 320px); aspect-ratio: 9 / 12; border: 3px dashed #8a78f0; border-radius: 20px; display: grid; place-items: center; font-family: var(--font-display); font-size: 26px; }
+  #ad-count { font-family: var(--font-display); font-size: 22px; }
+  .home-btns { display: flex; gap: 8px; }
+</style>
+
+<svg id="stage" viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene">
+  <g id="scene"></g>
+  <g id="fx"></g>
+  <rect id="flash" width="400" height="520" fill="#fff" opacity="0" pointer-events="none"/>
+</svg>
+
+<div id="bottom">
+  <div id="timer"><i></i></div>
+  <div id="choices"></div>
+</div>
+
+<div id="hud">
+  <div class="hud-row">
+    <span class="chip"><span class="coin-icon" aria-hidden="true"></span><span id="hud-coins">0</span></span>
+    <span class="chip chip-level" id="hud-level">Level 1</span>
+    <div class="hud-tools">
+      <button class="icon-btn" id="btn-home" type="button" aria-label="Home" data-i18n-label="home"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg></button>
+      <button class="icon-btn" id="btn-hint" type="button" aria-label="Hint" data-i18n-label="hint"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2zm-3 18h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z"/></svg><span class="badge" id="hint-count">3</span></button>
+    </div>
+  </div>
+  <div id="taunt"></div>
+</div>
+<span id="ad-ribbon" class="ad-tag" data-i18n="ad" hidden>Ad</span>
+<div id="finger" aria-hidden="true" hidden>👆</div>
+<div id="stamp" class="stamp" hidden>FAIL</div>
+
+<section id="screen-home" class="screen">
+  <div class="home-top">
+    <span class="chip"><span class="coin-icon" aria-hidden="true"></span><span id="home-coins">0</span></span>
+    <div class="home-btns">
+      <button class="icon-btn" id="btn-shop" type="button" aria-label="Shop" data-i18n-label="shop"><svg viewBox="0 0 24 24"><path d="M6 7V6a6 6 0 0 1 12 0v1h3l-1.5 14h-15L3 7zm2 0h8V6a4 4 0 0 0-8 0z"/></svg><span class="badge" id="shop-badge" hidden>!</span></button>
+      <button class="icon-btn" id="btn-settings" type="button" aria-label="Settings" data-i18n-label="settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.5 7.5 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.5 7.5 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.5 7.5 0 0 0 1.7 1L11 21h4l.4-2.7a7.5 7.5 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5A3.5 3.5 0 1 1 13 8.5a3.5 3.5 0 0 1 0 7z"/></svg></button>
+    </div>
+  </div>
+  <span class="ad-tag" data-i18n="sponsored">Sponsored?</span>
+  <h1 class="logo">Not a<br><span class="strike">Fake</span> Ad<span class="sub">CHOICES</span></h1>
+  <p class="tagline" data-i18n="tagline">Save the guy from those ads. Pick right.</p>
+  <div class="home-bottom">
+    <div id="map" aria-label="Levels"></div>
+    <button class="btn btn-big btn-green" id="btn-play" type="button">Play</button>
+  </div>
+</section>
+
+<section id="screen-intro" class="screen screen-dim" hidden>
+  <div class="card">
+    <span class="ad-tag" data-i18n="intro.tag">That was the ad</span>
+    <h2 data-i18n="intro.title">He picked wrong. Again.</h2>
+    <p data-i18n="intro.body"></p>
+    <button class="btn btn-big btn-green" id="btn-intro-go" type="button" data-i18n="intro.go">Let me do it</button>
+  </div>
+</section>
+
+<section id="screen-won" class="screen screen-dim" hidden>
+  <div class="card">
+    <span class="ad-tag" data-i18n="notfake">Not fake</span>
+    <h2 id="won-title">Level 1 cleared!</h2>
+    <div class="stars" id="won-stars" aria-label="Stars"></div>
+    <p id="won-line"></p>
+    <div class="won-coins"><span class="coin-icon" aria-hidden="true"></span><span id="won-coins">+10</span></div>
+    <button class="btn btn-big btn-green" id="btn-next" type="button" data-i18n="next">Next level</button>
+  </div>
+</section>
+
+<section id="screen-lost" class="screen screen-dim" hidden>
+  <div class="card">
+    <h2 data-i18n="lost.title">Just like the ad!</h2>
+    <p id="lost-line" class="fail-joke"></p>
+    <button class="btn btn-gold" id="btn-revive" type="button"><span data-i18n="revive">Watch an ad, try this part again</span></button>
+    <button class="btn btn-big btn-green" id="btn-retry" type="button" data-i18n="retry">Try again</button>
+    <button class="btn btn-plain" id="btn-lost-home" type="button" data-i18n="home">Home</button>
+  </div>
+</section>
+
+<section id="screen-shop" class="screen screen-dim" hidden>
+  <div class="card card-wide">
+    <div class="card-head"><h2 data-i18n="shop.title">Shop</h2><span class="chip"><span class="coin-icon" aria-hidden="true"></span><span id="shop-coins">0</span></span></div>
+    <p class="sec-title" data-i18n="shop.outfits">Outfits</p>
+    <div id="shop-grid"></div>
+    <p class="sec-title" data-i18n="shop.hints">Hints</p>
+    <div class="row-btns">
+      <button class="btn btn-sm btn-gold" id="btn-buy-hints" type="button"></button>
+      <button class="btn btn-sm" id="btn-ad-hint" type="button" data-i18n="ad.hint">▶ +1 hint</button>
+    </div>
+    <button class="btn btn-plain" id="btn-shop-close" type="button" data-i18n="close">Close</button>
+  </div>
+</section>
+
+<section id="screen-hintbuy" class="screen screen-dim" hidden>
+  <div class="card">
+    <h2 data-i18n="nohints">Out of hints</h2>
+    <p data-i18n="nohints.body">Get more and keep going. The clock waits.</p>
+    <button class="btn btn-gold" id="btn-hb-ad" type="button" data-i18n="ad.hint">▶ +1 hint</button>
+    <button class="btn btn-green" id="btn-hb-buy" type="button"></button>
+    <button class="btn btn-plain" id="btn-hb-close" type="button" data-i18n="close">Close</button>
+  </div>
+</section>
+
+<section id="screen-settings" class="screen screen-dim" hidden>
+  <div class="card">
+    <h2 data-i18n="settings">Settings</h2>
+    <div class="set-row"><span data-i18n="set.sound">Sound</span><button class="toggle" id="tg-sound" type="button" role="switch" aria-checked="true" aria-label="Sound"></button></div>
+    <div class="set-row"><span data-i18n="set.music">Music</span><button class="toggle" id="tg-music" type="button" role="switch" aria-checked="true" aria-label="Music"></button></div>
+    <div class="set-row"><span data-i18n="set.lang">Language</span><button class="lang-btn" id="btn-lang" type="button">Türkçe</button></div>
+    <p class="small-print">Nimoriq · Not a Fake Ad: Choices</p>
+    <button class="btn btn-plain" id="btn-settings-close" type="button" data-i18n="close">Close</button>
+  </div>
+</section>
+
+<section id="screen-daily" class="screen screen-dim" hidden>
+  <div class="card">
+    <span class="ad-tag" data-i18n="daily.tag">Free, really</span>
+    <h2 data-i18n="daily.title">Daily reward</h2>
+    <div id="daily-row"></div>
+    <button class="btn btn-big btn-green" id="btn-daily" type="button" data-i18n="daily.claim">Claim</button>
+  </div>
+</section>
+
+<div id="ad-overlay" hidden>
+  <span class="ad-tag" data-i18n="ad">Ad</span>
+  <div class="ad-box" data-i18n="ad.standin">An ad plays here</div>
+  <div id="ad-count">3</div>
+</div>
+
+<!--GAME_SCRIPT-->

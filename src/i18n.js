@@ -1,0 +1,168 @@
+// Every word the player reads, in English and Turkish.
+const STRINGS = {
+  en: {
+    sponsored: 'Sponsored?',
+    tagline: 'Save the guy from those ads. Pick right.',
+    play: 'Play level {n}',
+    level: 'Level {n}',
+    home: 'Home',
+    hint: 'Hint',
+    ad: 'Ad',
+    next: 'Next level',
+    retry: 'Try again',
+    notfake: 'Not fake',
+    'won.title': 'Level {n} cleared!',
+    'won.line': 'Saved. Unlike the guy in the ad.',
+    'lost.title': 'Just like the ad!',
+    'intro.hud': 'The Ad',
+    'intro.real': 'Practice',
+    'intro.taunt': '99% pick the wrong one!',
+    'intro.tag': 'That was the ad',
+    'intro.title': 'He picked wrong. Again.',
+    'intro.body': 'In the ads the guy always grabs the silliest thing. Here you pick: think for a second, then save him.',
+    'intro.go': 'Let me do it',
+    'intro.won': 'You beat the ad!',
+    saved: 'SAVED!',
+    quick: 'Quick!',
+    tooslow: 'Too slow!',
+    'fail.flare': 'Gasoline on fire. Bold move.',
+    'fail.cut': 'He cut the only thing holding him up.',
+    'fail.eaten': 'The shark had a snack. It was him.',
+    'fail.pulled': 'He caught the shark. The shark caught him.',
+    'fail.stung': 'The bees had opinions.',
+    'fail.boom': 'Well, that escalated.',
+    'fail.bigfire': 'More air, more fire. Science.',
+    'fail.swipe': 'The bear did not like that.',
+    'fail.scared': 'The ghost was not impressed.',
+    'fail.freeze': 'Ice cream in a snowstorm. Brrr.',
+    'fail.sink': 'Down he goes.',
+    'fail.bonk': 'The thief said thanks.',
+    'fail.roast': 'Medium rare.',
+    'fail.bite': 'The vampire had dinner.',
+    'fail.thirst': 'Even thirstier now.',
+    'fail.crush': 'Flat as a pancake.',
+    'fail.fall': 'There was no plan B.',
+    'fail.time': 'He waited for you. You waited too long.',
+    'fail.snakebite': 'The snake did not care for that.',
+    'fail.abduct': 'He is the aliens\' problem now.',
+    'fail.blown': 'He is flying. Not the good kind.',
+    'fail.crash': 'Heavier is not better in a balloon.',
+    'fail.webbed': 'Wrapped up for later.',
+    'fail.mice': 'They brought friends.',
+    'fail.zombie': 'He is on their team now.',
+    'fail.lion': 'The lion wanted something else.',
+    shop: 'Shop', settings: 'Settings', close: 'Close',
+    'shop.title': 'Shop', 'shop.outfits': 'Outfits', 'shop.hints': 'Hints',
+    'shop.buyhints': '3 hints · {p}', 'shop.owned': 'Owned', 'shop.wearing': 'Wearing', 'shop.poor': 'Not enough coins',
+    'ad.hint': '▶ Ad: +1 hint', 'ad.standin': 'An ad would play here.\nThanks for watching!', 'ad.none': 'No ad right now. Try again soon.',
+    revive: '▶ Ad: try this part again',
+    nohints: 'Out of hints', 'nohints.body': 'Get more and keep going. The clock waits for you.',
+    'set.sound': 'Sound', 'set.music': 'Music', 'set.lang': 'Language', 'lang.name': 'English',
+    'daily.tag': 'Free, really', 'daily.title': 'Daily reward', 'daily.claim': 'Claim', 'daily.day': 'Day {n}',
+    'stage': '{a}/{b}',
+    'won.stars3': 'Lightning fast. No ad could fool you.', 'won.stars2': 'Nice save. A bit quicker for 3 stars.', 'won.stars1': 'Saved. Barely. Faster means more stars.',
+    'outfit.classic': 'Classic', 'outfit.sporty': 'Sporty', 'outfit.farmer': 'Farmer', 'outfit.chef': 'Chef', 'outfit.cowboy': 'Cowboy', 'outfit.pirate': 'Pirate', 'outfit.astro': 'Astronaut', 'outfit.king': 'King',
+    taunts: ['99% pick the wrong one!', 'Only geniuses save him', 'Think before you tap', 'Can you save him?', 'Nobody passes level {n}', 'The ad lied. This one does not.'],
+    'tip.first': 'Tap the thing that saves him. Quick, the bar is running!',
+  },
+  tr: {
+    sponsored: 'Sponsorlu?',
+    tagline: 'Reklamlardaki adamı kurtar. Doğrusunu seç.',
+    play: 'Oyna · Bölüm {n}',
+    level: 'Bölüm {n}',
+    home: 'Ana ekran',
+    hint: 'İpucu',
+    ad: 'Reklam',
+    next: 'Sonraki bölüm',
+    retry: 'Tekrar dene',
+    notfake: 'Sahte değil',
+    'won.title': 'Bölüm {n} tamam!',
+    'won.line': 'Kurtuldu. Reklamdaki adamın aksine.',
+    'lost.title': 'Aynı reklamdaki gibi!',
+    'intro.hud': 'Reklam',
+    'intro.real': 'Deneme',
+    'intro.taunt': '%99\'u yanlışı seçiyor!',
+    'intro.tag': 'Bu reklamdı',
+    'intro.title': 'Yine yanlış seçti.',
+    'intro.body': 'Reklamlarda adam hep en saçma şeyi kapar. Burada sen seçiyorsun: bir saniye düşün, sonra kurtar onu.',
+    'intro.go': 'Ben yaparım',
+    'intro.won': 'Reklamı yendin!',
+    saved: 'KURTULDU!',
+    quick: 'Çabuk!',
+    tooslow: 'Geç kaldın!',
+    'fail.flare': 'Yangına benzin. Cesur hamle.',
+    'fail.cut': 'Onu tutan tek şeyi kesti.',
+    'fail.eaten': 'Köpekbalığı atıştırdı. Atıştırmalık oydu.',
+    'fail.pulled': 'Köpekbalığını tuttu. Köpekbalığı da onu.',
+    'fail.stung': 'Arıların bir fikri vardı.',
+    'fail.boom': 'Eh, işler biraz büyüdü.',
+    'fail.bigfire': 'Daha çok hava, daha çok ateş. Bilim.',
+    'fail.swipe': 'Ayının hiç hoşuna gitmedi.',
+    'fail.scared': 'Hayalet hiç etkilenmedi.',
+    'fail.freeze': 'Kar fırtınasında dondurma. Brrr.',
+    'fail.sink': 'Ve dibe...',
+    'fail.bonk': 'Hırsız teşekkür etti.',
+    'fail.roast': 'Orta pişmiş.',
+    'fail.bite': 'Vampir akşam yemeğini buldu.',
+    'fail.thirst': 'Şimdi daha da susadı.',
+    'fail.crush': 'Gözleme gibi oldu.',
+    'fail.fall': 'B planı yoktu.',
+    'fail.time': 'O seni bekledi. Sen fazla bekledin.',
+    'fail.snakebite': 'Yılanın umurunda bile olmadı.',
+    'fail.abduct': 'Artık uzaylıların derdi.',
+    'fail.blown': 'Uçuyor. Ama iyi anlamda değil.',
+    'fail.crash': 'Balonda ağırlık iyi fikir değil.',
+    'fail.webbed': 'Sonraya saklandı. Paket servis.',
+    'fail.mice': 'Arkadaşlarını da getirdiler.',
+    'fail.zombie': 'Artık onların takımında.',
+    'fail.lion': 'Aslan başka bir şey bekliyordu.',
+    shop: 'Dükkân', settings: 'Ayarlar', close: 'Kapat',
+    'shop.title': 'Dükkân', 'shop.outfits': 'Kıyafetler', 'shop.hints': 'İpuçları',
+    'shop.buyhints': '3 ipucu · {p}', 'shop.owned': 'Senin', 'shop.wearing': 'Giyili', 'shop.poor': 'Altın yetmiyor',
+    'ad.hint': '▶ Reklam: +1 ipucu', 'ad.standin': 'Burada reklam oynar.\nİzlediğin için sağ ol!', 'ad.none': 'Şu an reklam yok. Birazdan tekrar dene.',
+    revive: '▶ Reklam: bu kısmı tekrar dene',
+    nohints: 'İpucun kalmadı', 'nohints.body': 'Biraz al, devam et. Süre seni bekliyor.',
+    'set.sound': 'Ses', 'set.music': 'Müzik', 'set.lang': 'Dil', 'lang.name': 'Türkçe',
+    'daily.tag': 'Gerçekten bedava', 'daily.title': 'Günlük ödül', 'daily.claim': 'Al', 'daily.day': '{n}. gün',
+    'stage': '{a}/{b}',
+    'won.stars3': 'Şimşek gibi. Hiçbir reklam seni kandıramaz.', 'won.stars2': 'Güzel kurtardın. 3 yıldız için biraz daha hızlı.', 'won.stars1': 'Kurtuldu. Kıl payı. Hızlı olursan daha çok yıldız.',
+    'outfit.classic': 'Klasik', 'outfit.sporty': 'Sporcu', 'outfit.farmer': 'Çiftçi', 'outfit.chef': 'Aşçı', 'outfit.cowboy': 'Kovboy', 'outfit.pirate': 'Korsan', 'outfit.astro': 'Astronot', 'outfit.king': 'Kral',
+    taunts: ['%99\'u yanlışı seçiyor!', 'Sadece dahiler kurtarabiliyor', 'Dokunmadan önce düşün', 'Onu kurtarabilir misin?', 'Kimse {n}. bölümü geçemedi', 'Reklam yalan söyledi. Bu söylemiyor.'],
+    'tip.first': 'Onu kurtaracak şeye dokun. Çabuk, süre akıyor!',
+  },
+};
+
+// Words the hero and the monsters shout, written once in the scene code (in either language).
+const SAYS = {
+  en: { 'BÖÖ!': 'BOO!', 'ISIRDI!': 'CHOMP!', 'SU...': 'WATER...', 'OH BE!': 'AHHH!', 'IYY!': 'EWW!', 'HAV HAV!': 'WOOF!', 'ŞAK!': 'WHACK!', 'MİYAV!': 'MEOW!', 'İİİK!': 'EEEK!', 'BEYİİN!': 'BRAINS!', 'KRAK!': 'CRACK!', 'YIHUU!': 'WHEEE!' },
+  tr: { 'POF!': 'PUF!', 'AUU!': 'AYY!', 'CHOMP!': 'HAM!', 'BYE!': 'GÜLE GÜLE!', 'WHOOO!': 'UÇUYORUM!', 'AAAA!': 'AAAA!', 'Quick!': 'Çabuk!' },
+};
+export const sayWord = (text) => SAYS[lang][text] || text;
+
+function detect() {
+  try {
+    const s = localStorage.getItem('nfa-choices-lang');
+    if (s === 'en' || s === 'tr') return s;
+  } catch (e) { /* no storage */ }
+  const nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'en';
+  return nav.toLowerCase().startsWith('tr') ? 'tr' : 'en';
+}
+
+let lang = detect();
+export const getLang = () => lang;
+export function setLang(l) {
+  lang = l === 'tr' ? 'tr' : 'en';
+  try { localStorage.setItem('nfa-choices-lang', lang); } catch (e) { /* ignore */ }
+  document.documentElement.lang = lang;
+  applyStatic();
+}
+export function t(key, vars) {
+  const v = STRINGS[lang][key] ?? STRINGS.en[key] ?? key;
+  if (typeof v !== 'string' || !vars) return v;
+  return v.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`);
+}
+export function applyStatic() {
+  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll('[data-i18n-label]')) el.setAttribute('aria-label', t(el.dataset.i18nLabel));
+}
+document.documentElement.lang = lang;
