@@ -304,6 +304,14 @@
   @keyframes cardBad { 20% { transform: translateX(-8px) rotate(-3deg); } 40% { transform: translateX(8px) rotate(3deg); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
   #stage.enter #scene { animation: sceneIn 0.4s ease both; }
   @keyframes sceneIn { from { opacity: 0; } to { opacity: 1; } }
+  #iap-grid { display: flex; flex-direction: column; gap: 8px; }
+  .iap { display: flex; align-items: center; gap: 10px; border: 3px solid var(--ink); border-radius: 16px; background: #fff; box-shadow: 0 4px 0 var(--ink); padding: 8px 10px; cursor: pointer; font: inherit; color: var(--ink); text-align: left; }
+  .iap:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+  .iap-icon { font-size: 28px; flex: none; }
+  .iap-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .iap-text b { font-family: var(--font-display); font-size: 17px; line-height: 1.1; }
+  .iap-text small { font-weight: 700; font-size: 12px; color: var(--ink-soft); }
+  .iap-price { flex: none; font-family: var(--font-display); font-size: 16px; color: #fff; background: var(--green); border: 2px solid var(--ink); border-radius: 10px; padding: 4px 10px 2px; }
 </style>
 
 <svg id="stage" viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene">
@@ -407,6 +415,8 @@
       <button class="btn btn-sm btn-gold" id="btn-buy-hints" type="button"></button>
       <button class="btn btn-sm" id="btn-ad-hint" type="button" data-i18n="ad.hint">▶ +1 hint</button>
     </div>
+    <p class="sec-title" data-i18n="iap.title">Store</p>
+    <div id="iap-grid"></div>
     <button class="btn btn-plain" id="btn-shop-close" type="button" data-i18n="close">Close</button>
   </div>
 </section>
@@ -433,8 +443,8 @@
     <div class="set-row"><span data-i18n="set.lang">Language</span><button class="lang-btn" id="btn-lang" type="button">Türkçe</button></div>
     <div class="set-row"><span data-i18n="set.resetLabel">Progress</span><button class="lang-btn" id="btn-reset" type="button">Reset</button></div>
     <p class="sec-title" data-i18n="promo.title">More from Nimoriq</p>
-    <button class="promo" id="promo-nfa" type="button"><span class="pi" style="background:#bfe0ff">🏃</span><span><b>Not a Fake Ad</b><small data-i18n="promo.nfa">Run through the gates. For real.</small></span></button>
-    <button class="promo" id="promo-tower" type="button"><span class="pi" style="background:#ffe0a0">🗼</span><span><b>Not a Fake Ad: Tower</b><small data-i18n="promo.tower">Climb the tower, beat the boss.</small></span></button>
+    <button class="promo" id="promo-nfa" type="button"><img class="pi" id="promo-nfa-img" alt=""><span><b>Not a Fake Ad</b><small data-i18n="promo.nfa">Run through the gates. For real.</small></span></button>
+    <button class="promo" id="promo-tower" type="button"><img class="pi" id="promo-tower-img" alt=""><span><b>Not a Fake Ad: Tower</b><small data-i18n="promo.tower">Climb the tower, beat the boss.</small></span></button>
     <p class="small-print"><a id="link-privacy" href="https://nimoriq.com/nfa-choices-privacy/" data-i18n="set.privacy">Privacy</a> · <a id="link-support" href="https://nimoriq.com/nfa-choices-support/" data-i18n="set.support">Support</a></p>
     <p class="small-print">Nimoriq · Not a Fake Ad: Choices</p>
     <button class="btn btn-plain" id="btn-settings-close" type="button" data-i18n="close">Close</button>
@@ -565,6 +575,17 @@
   </div>
 </section>
 
+
+<section id="screen-pay" class="screen screen-dim" style="z-index:40" hidden>
+  <div class="card">
+    <span class="ad-tag" data-i18n="pay.tag">Test purchase</span>
+    <h2 id="pay-title">Product</h2>
+    <p class="won-coins" id="pay-price">$0.99</p>
+    <p class="small-print" data-i18n="pay.note">Test build: nothing is charged.</p>
+    <button class="btn btn-big btn-green" id="pay-confirm" type="button" data-i18n="pay.confirm">Buy</button>
+    <button class="btn btn-plain" id="pay-cancel" type="button" data-i18n="pay.cancel">Cancel</button>
+  </div>
+</section>
 
 <div id="toast" class="toast" role="status" hidden></div>
 <div id="ad-overlay" hidden>

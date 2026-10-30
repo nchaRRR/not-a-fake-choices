@@ -1,6 +1,27 @@
+import es, { says as esSays } from './lang/es.js';
+import pt, { says as ptSays } from './lang/pt.js';
+import de, { says as deSays } from './lang/de.js';
+import fr, { says as frSays } from './lang/fr.js';
 // Every word the player reads, in English and Turkish.
 const STRINGS = {
   en: {
+    "iap.title": "Store",
+    "iap.no_ads": "Remove ads",
+    "iap.no_ads.sub": "Rewards without watching videos",
+    "iap.starter": "Starter pack",
+    "iap.starter.sub": "1,500 coins + 10 hints + King outfit",
+    "iap.hints_20": "20 hints",
+    "iap.hints_20.sub": "For the toughest dangers",
+    "iap.coins_s": "1,000 coins",
+    "iap.coins_s.sub": "A little boost",
+    "iap.coins_m": "6,000 coins",
+    "iap.coins_m.sub": "Best value",
+    "iap.all": "You own everything here. Thank you!",
+    "iap.thanks": "Thanks! Enjoy.",
+    "pay.tag": "Test purchase",
+    "pay.note": "Test build: nothing is charged.",
+    "pay.confirm": "Buy",
+    "pay.cancel": "Cancel",
     sponsored: 'Sponsored?',
     tagline: 'Save the guy from those ads. Pick right.',
     play: 'Play level {n}',
@@ -154,6 +175,23 @@ const STRINGS = {
     'tip.first': 'Tap the thing that saves him. Quick, the bar is running!',
   },
   tr: {
+    "iap.title": "Mağaza",
+    "iap.no_ads": "Reklamları kaldır",
+    "iap.no_ads.sub": "Ödüller video izlemeden gelir",
+    "iap.starter": "Başlangıç paketi",
+    "iap.starter.sub": "1.500 altın + 10 ipucu + Kral kıyafeti",
+    "iap.hints_20": "20 ipucu",
+    "iap.hints_20.sub": "En zor tehlikeler için",
+    "iap.coins_s": "1.000 altın",
+    "iap.coins_s.sub": "Küçük bir destek",
+    "iap.coins_m": "6.000 altın",
+    "iap.coins_m.sub": "En avantajlı",
+    "iap.all": "Buradaki her şey senin. Teşekkürler!",
+    "iap.thanks": "Teşekkürler! Keyfini çıkar.",
+    "pay.tag": "Test satın alma",
+    "pay.note": "Test sürümü: para çekilmez.",
+    "pay.confirm": "Satın al",
+    "pay.cancel": "Vazgeç",
     sponsored: 'Sponsorlu?',
     tagline: 'Reklamlardaki adamı kurtar. Doğrusunu seç.',
     play: 'Oyna · Bölüm {n}',
@@ -313,27 +351,50 @@ const SAYS = {
   en: { 'BÖÖ!': 'BOO!', 'ISIRDI!': 'CHOMP!', 'SU...': 'WATER...', 'OH BE!': 'AHHH!', 'IYY!': 'EWW!', 'HAV HAV!': 'WOOF!', 'ŞAK!': 'WHACK!', 'MİYAV!': 'MEOW!', 'İİİK!': 'EEEK!', 'BEYİİN!': 'BRAINS!', 'KRAK!': 'CRACK!', 'YIHUU!': 'WHEEE!', 'ERİYORUM!': 'I\'M MELTING!', 'VRAK!': 'RIBBIT!', 'ÇEK!': 'PULL!', 'MİS!': 'FRESH!', 'PÖFF!': 'PEE-YOO!', 'UH UH!': 'OOH OOH!', 'KLİK!': 'CLICK!', 'ŞŞŞ...': 'SHHH...', 'FIIIT!': 'TWEET!', 'UAAAA!': 'WAAAH!' },
   tr: { 'POF!': 'PUF!', 'AUU!': 'AYY!', 'CHOMP!': 'HAM!', 'BYE!': 'GÜLE GÜLE!', 'WHOOO!': 'UÇUYORUM!', 'AAAA!': 'AAAA!', 'Quick!': 'Çabuk!', 'BLUP!': 'BLUP!', 'NOM NOM!': 'HAM HAM!', 'UGH!': 'UGH!', 'OLE!': 'OLE!', 'GRRR!': 'GRRR!', 'PUF!': 'PUF!' },
 };
-export const sayWord = (text) => SAYS[lang][text] || text;
+SAYS.es = esSays || {};
+SAYS.pt = ptSays || {};
+SAYS.de = deSays || {};
+SAYS.fr = frSays || {};
+// Scene shouts are written in Turkish or English; other languages map both, falling back to English.
+export const sayWord = (text) => (SAYS[lang] && SAYS[lang][text]) || (lang !== 'tr' && lang !== 'en' && SAYS.en[text]) || text;
+
+STRINGS.es = es;
+STRINGS.pt = pt;
+STRINGS.de = de;
+STRINGS.fr = fr;
+
+// Languages in the order the language button cycles through them.
+export const LANGS = ['en', 'tr', 'es', 'pt', 'de', 'fr'];
+export const LANG_NAMES = { en: 'English', tr: 'Türkçe', es: 'Español', pt: 'Português', de: 'Deutsch', fr: 'Français' };
+const LOCALES = { en: 'en-US', tr: 'tr-TR', es: 'es-ES', pt: 'pt-BR', de: 'de-DE', fr: 'fr-FR' };
 
 function detect() {
   try {
-    const s = localStorage.getItem('nfa-choices-lang');
-    if (s === 'en' || s === 'tr') return s;
-  } catch (e) { /* no storage */ }
-  const nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'en';
-  return nav.toLowerCase().startsWith('tr') ? 'tr' : 'en';
+    const saved = localStorage.getItem('nfa-choices-lang');
+    if (LANGS.includes(saved)) return saved;
+  } catch (e) { /* storage unavailable */ }
+  const list = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en']);
+  for (const l of list) {
+    const code = String(l || '').toLowerCase().slice(0, 2);
+    if (LANGS.includes(code)) return code;
+  }
+  return 'en';
 }
 
 let lang = detect();
 export const getLang = () => lang;
-export function setLang(l) {
-  lang = l === 'tr' ? 'tr' : 'en';
+export const locale = () => LOCALES[lang] || 'en-US';
+export const nextLang = () => LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length];
+
+export function setLang(next) {
+  lang = LANGS.includes(next) ? next : 'en';
   try { localStorage.setItem('nfa-choices-lang', lang); } catch (e) { /* ignore */ }
   document.documentElement.lang = lang;
   applyStatic();
 }
+
 export function t(key, vars) {
-  const v = STRINGS[lang][key] ?? STRINGS.en[key] ?? key;
+  const v = (STRINGS[lang] && STRINGS[lang][key]) ?? STRINGS.en[key] ?? key;
   if (typeof v !== 'string' || !vars) return v;
   return v.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`);
 }
@@ -342,3 +403,5 @@ export function applyStatic() {
   for (const el of document.querySelectorAll('[data-i18n-label]')) el.setAttribute('aria-label', t(el.dataset.i18nLabel));
 }
 document.documentElement.lang = lang;
+export const _STRINGS = STRINGS; // for scripts/check-lang
+export const _SAYS = SAYS;

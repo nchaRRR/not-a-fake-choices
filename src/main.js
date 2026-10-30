@@ -3,21 +3,28 @@
 // the hero before the bar runs out. Wrong picks end the way the ads always end.
 import { el, g, place, makeHero, setFace, setArms, paintHero, toolSvg, toolNode, OUTFITS, setOutfit, PETS, setPet } from './art.js';
 import { joke } from './jokes.js';
-import { showRewarded, adPrivacy } from './ads.js';
+import { showRewarded, adPrivacy, setSkipAds } from './ads.js';
+import { createPayments, PRODUCTS } from './payments.js';
 import { scheduleNotifications, askNotificationPermission } from './notify.js';
 import { storeLink, openLink } from './promo.js';
+import promoNfa from '../assets/promo-nfa-128.webp';
+import promoTower from '../assets/promo-tower-128.webp';
 import { createAccount } from './account.js';
 import { runOpening } from './opening.js';
 import { TOOLS, OUTFITS as ALL_OUTFITS, PETS as ALL_PETS } from './art.js';
 import { HAZARDS, HAZARD_IDS } from './hazards.js';
 import { sfx, unlockAudio, setMuted } from './audio.js';
-import { startMusic, setMusicEnabled } from './music.js';
+import { startMusic, setMusicEnabled, setSong } from './music.js';
 import { track } from './analytics.js';
-import { t, getLang, setLang, applyStatic, sayWord } from './i18n.js';
+import { startTelemetry } from './telemetry.js';
+import { t, getLang, setLang, applyStatic, sayWord, nextLang, LANG_NAMES } from './i18n.js';
+
+// anonymous play statistics (phone app only)
+startTelemetry({ game: 'choices', version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev', enabled: typeof __CLOUD__ !== 'undefined' && __CLOUD__, lang: () => document.documentElement.lang });
 
 const $ = (id) => document.getElementById(id);
 const SAVE_KEY = 'nfa-choices-v1';
-const BASE = () => ({ level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0, pet: 'none', pets: ['none'], chests: {}, vibe: true, streak: 0, st: { saves: 0, fails: 0, bestStreak: 0, levels: 0, failBy: {} } });
+const BASE = () => ({ level: 1, coins: 0, hints: 3, seenIntro: 0, muted: false, music: true, stars: {}, outfit: 'classic', owned: ['classic'], daily: { last: '', streak: 0 }, album: {}, ach: {}, endlessBest: 0, dailyCh: '', dailyCount: 0, pet: 'none', pets: ['none'], chests: {}, vibe: true, streak: 0, iap: [], st: { saves: 0, fails: 0, bestStreak: 0, levels: 0, failBy: {} } });
 const save = (() => {
   const base = BASE();
   try { return { ...base, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; } catch (e) { return base; }
@@ -30,6 +37,8 @@ const writeSave = () => {
 setMuted(save.muted);
 setOutfit(save.outfit);
 setPet(save.pet);
+const payments = createPayments();
+setSkipAds(() => (save.iap || []).includes('no_ads'));
 const buzz = (ms) => { if (save.vibe && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) { /* not supported */ } };
 
 // Weekly event: changes every Monday, cycles through four twists.
@@ -339,6 +348,7 @@ function startLevel(n, spec) {
   $('taunt').textContent = n < 0 ? ts[0] : ts[(n * 5) % ts.length].replace('{n}', n);
   updateCoins();
   updateHints();
+  setSong(level.boss || level.mode === 'endless' ? 'boss' : 'main');
   buildStage();
   if (level.mode === 'bonus') $('taunt').textContent = t('bonus.q');
   if (level.boss) {
@@ -694,6 +704,7 @@ function updateCoins() { $('hud-coins').textContent = save.coins; $('home-coins'
 function updateHints() { $('hint-count').textContent = eventId === 'freehint' ? '∞' : save.hints > 0 ? save.hints : '+'; }
 function goHome() {
   gen++;
+  setSong('main');
   state = 'home';
   introAd = false;
   $('hud').hidden = true;
@@ -908,6 +919,7 @@ function renderShop() {
     return `<button type="button" class="outfit ${on ? 'on' : ''} ${own ? '' : 'locked'}" data-id="${p.id}">${heroPreview(cur, p)}<span class="name">${t('pet.' + p.id)}</span><span class="price">${price}</span></button>`;
   }).join('');
   for (const b of $('pet-grid').children) b.addEventListener('click', () => buyPet(b.dataset.id, b));
+  renderIap();
 }
 function buyPet(id, btn) {
   const p = PETS.find((x) => x.id === id);
@@ -939,6 +951,29 @@ function buyOutfit(id, btn) {
   setOutfit(id);
   writeSave();
   updateCoins();
+  renderShop();
+}
+function renderIap() {
+  const owned = save.iap || [];
+  $('iap-grid').innerHTML = Object.entries(PRODUCTS)
+    .filter(([id, p]) => p.kind === 'consumable' || !owned.includes(id))
+    .map(([id, p]) => `<button type="button" class="iap" data-id="${id}"><span class="iap-icon">${p.icon}</span><span class="iap-text"><b>${t('iap.' + id)}</b><small>${t('iap.' + id + '.sub')}</small></span><span class="iap-price">${p.price}</span></button>`).join('')
+    || `<p class="small-print">${t('iap.all')}</p>`;
+  for (const b of $('iap-grid').querySelectorAll('.iap')) b.addEventListener('click', () => buyIap(b.dataset.id));
+}
+async function buyIap(id) {
+  sfx.tap();
+  const p = PRODUCTS[id];
+  const ok = await payments.buy(id);
+  if (!ok) return;
+  if (p.kind !== 'consumable') save.iap = [...new Set([...(save.iap || []), id])];
+  save.coins += p.coins || 0;
+  save.hints += p.hints || 0;
+  if (p.outfit && !save.owned.includes(p.outfit)) save.owned.push(p.outfit);
+  writeSave(); updateCoins(); updateHints();
+  sfx.buy(); confetti(30);
+  toast(t('iap.thanks'), 'good');
+  track('purchase', { kind: p.kind, id });
   renderShop();
 }
 function buyHints(back) {
@@ -1010,7 +1045,7 @@ function renderSettings() {
   $('tg-vibe').setAttribute('aria-checked', String(save.vibe));
   $('tg-notify').setAttribute('aria-checked', String(save.notify !== false));
   $('row-adprivacy').hidden = !(adPrivacy && adPrivacy.privacyRequired);
-  $('btn-lang').textContent = getLang() === 'tr' ? 'Türkçe' : 'English';
+  $('btn-lang').textContent = LANG_NAMES[getLang()];
 }
 const on = (id, fn) => $(id).addEventListener('click', (e) => { e.stopPropagation(); unlockAudio(); fn(); });
 on('btn-play', () => { sfx.tap(); if (!save.seenIntro && save.level <= 1) startIntro(); else startLevel(save.level); });
@@ -1059,6 +1094,8 @@ on('btn-album', () => { sfx.tap(); renderAlbum(); showScreen('screen-album'); })
 on('btn-album-close', () => { sfx.tap(); goHome(); });
 on('btn-ach', () => { sfx.tap(); renderAch(); showScreen('screen-ach'); });
 on('btn-ach-close', () => { sfx.tap(); goHome(); });
+$('promo-nfa-img').src = promoNfa;
+$('promo-tower-img').src = promoTower;
 on('promo-nfa', () => { track('promo_click', { game: 'notafakead' }); openLink(storeLink('notafakead')); });
 on('promo-tower', () => { track('promo_click', { game: 'tower' }); openLink(storeLink('tower')); });
 on('btn-lost-home', () => { sfx.tap(); goHome(); });
@@ -1105,7 +1142,7 @@ function useHint() {
   b.classList.add('hint');
   sfx.tap();
 }
-on('btn-lang', () => { setLang(getLang() === 'tr' ? 'en' : 'tr'); sfx.tap(); renderSettings(); });
+on('btn-lang', () => { setLang(nextLang()); sfx.tap(); renderSettings(); });
 on('btn-settings', () => { sfx.tap(); renderSettings(); showScreen('screen-settings'); });
 on('btn-account', () => { sfx.tap(); $('screen-settings').hidden = true; account.open('settings'); });
 on('btn-settings-close', () => { sfx.tap(); goHome(); });

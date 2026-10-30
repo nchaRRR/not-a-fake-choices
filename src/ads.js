@@ -14,6 +14,9 @@ if (admob) admob.init();
 export const adPrivacy = admob;
 
 let busy = false;
+let skipAds = () => false;
+// "No ads" purchase: rewards arrive without the video.
+export function setSkipAds(fn) { skipAds = fn; }
 
 function standIn() {
   const box = document.getElementById('ad-overlay');
@@ -36,6 +39,7 @@ function standIn() {
 
 export async function showRewarded(placement) {
   if (busy) return false;
+  if (skipAds()) return true;
   busy = true;
   let ok = false;
   try {

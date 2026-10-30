@@ -2,18 +2,25 @@
 // and a faster minor-key loop while the boss is within reach.
 import { getAudioContext } from './audio.js';
 
+// Choices' own tunes: a bouncy, cartoony "game show" swing while you pick, and a tense minor loop
+// for boss levels and long Endless runs.
 const SONGS = {
   main: {
-    bpm: 112,
-    // C  G  Am  F   (MIDI notes)
-    chords: [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]],
-    lead: [[72, 0, 76, 0, 79, 0, 76, 74], [74, 0, 71, 0, 74, 0, 79, 0], [76, 0, 72, 0, 69, 0, 72, 76], [77, 0, 76, 0, 74, 0, 72, 0]],
+    bpm: 132,
+    swing: 1,
+    // C  A7  Dm  G7  C  E7  F  G7   (MIDI notes)
+    chords: [[60, 64, 67], [57, 61, 64], [50, 53, 57], [55, 59, 65], [60, 64, 67], [52, 56, 62], [53, 57, 60], [55, 59, 65]],
+    lead: [
+      [72, 0, 76, 79, 0, 76, 72, 0], [73, 0, 76, 81, 0, 79, 76, 0], [74, 0, 77, 81, 0, 77, 74, 0], [79, 77, 76, 74, 0, 71, 74, 0],
+      [76, 0, 79, 84, 0, 79, 76, 0], [80, 0, 76, 74, 0, 71, 68, 0], [77, 76, 74, 72, 0, 69, 72, 77], [79, 0, 77, 0, 74, 0, 71, 0],
+    ],
   },
   boss: {
-    bpm: 136,
-    // Am  F  G  E
-    chords: [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 56, 59]],
-    lead: [[69, 0, 72, 69, 76, 0, 72, 0], [77, 0, 76, 72, 69, 0, 72, 0], [74, 0, 71, 74, 79, 0, 74, 0], [76, 0, 75, 0, 76, 0, 80, 0]],
+    bpm: 148,
+    swing: 0,
+    // Am  F  Dm  E7
+    chords: [[57, 60, 64], [53, 57, 60], [50, 53, 57], [52, 56, 59]],
+    lead: [[81, 0, 76, 72, 0, 76, 81, 0], [77, 0, 72, 69, 0, 72, 77, 0], [74, 0, 77, 81, 0, 77, 74, 0], [76, 75, 76, 80, 0, 76, 71, 0]],
   },
 };
 
@@ -98,14 +105,14 @@ function schedule() {
     const bar = Math.floor(step / 8) % s.chords.length;
     const i = step % 8;
     const chord = s.chords[bar];
-    const t = nextTime;
+    const t = nextTime + (i % 2 && s.swing ? eighth * 0.22 : 0);
     // bass on the beat
     if (i % 2 === 0) note(ctx, t, hz(chord[i === 4 ? 2 : 0] - 24), eighth * 1.6, 'triangle', 0.22);
     // soft arpeggio
     note(ctx, t, hz(chord[[0, 1, 2, 1][i % 4]] + 12), eighth * 0.9, 'square', 0.035, 1800);
     // lead, every other loop so it does not tire the ear
     const lead = s.lead[bar][i];
-    if (lead && Math.floor(step / 32) % 2 === 1) note(ctx, t, hz(lead), eighth * 1.7, 'triangle', 0.09);
+    if (lead && Math.floor(step / (s.chords.length * 8)) % 2 === 1) note(ctx, t, hz(lead), eighth * (s.swing ? 0.9 : 1.7), s.swing ? 'square' : 'triangle', s.swing ? 0.045 : 0.09, s.swing ? 2600 : 0);
     // drums
     if (i === 0 || i === 4 || (song === 'boss' && i === 6)) kick(ctx, t, 0.35);
     if (i === 2 || i === 6) hat(ctx, t, 0.12, 0.12, 1800);

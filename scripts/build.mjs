@@ -25,7 +25,7 @@ async function bundle(cloud) {
     target: ['es2020', 'safari15'],
     write: false,
     legalComments: 'none',
-    define: { __CLOUD__: String(cloud) },
+    define: { __CLOUD__: String(cloud), __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).version) },
     loader: { '.webp': 'dataurl' },
   });
   const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');

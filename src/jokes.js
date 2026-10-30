@@ -1,3 +1,7 @@
+import { jokes as esJ } from './lang/es.js';
+import { jokes as ptJ } from './lang/pt.js';
+import { jokes as deJ } from './lang/de.js';
+import { jokes as frJ } from './lang/fr.js';
 // One line for every wrong pick: what the album and the fail screen say, per danger and item.
 const J = {
   lava: {
@@ -207,7 +211,11 @@ const J = {
   },
 };
 
+const MORE = { es: esJ || {}, pt: ptJ || {}, de: deJ || {}, fr: frJ || {} };
 export function joke(hazard, tool, lang) {
   const j = J[hazard] && J[hazard][tool];
-  return j ? j[lang === 'tr' ? 1 : 0] : '';
+  if (!j) return '';
+  if (lang === 'tr') return j[1];
+  return (MORE[lang] && MORE[lang][`${hazard}.${tool}`]) || j[0];
 }
+export const _J = J;
