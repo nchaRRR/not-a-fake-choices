@@ -5,6 +5,23 @@ import fr, { says as frSays } from './lang/fr.js';
 // Every word the player reads, in English and Turkish.
 const STRINGS = {
   en: {
+    "ch.title": "Challenge a friend",
+    "ch.send": "Challenge a friend",
+    "ch.how": "Play Endless, then send your score. Your friend gets the same dangers in the same order.",
+    "ch.play": "Play Endless",
+    "ch.have": "Got a code?",
+    "ch.go": "Play this code",
+    "ch.bad": "That code doesn't look right.",
+    "ch.accept": "Accept!",
+    "ch.in": "Your friend saved him {n} times in a row. Can you beat that?",
+    "ch.beat": "You beat your friend!",
+    "ch.won": "You {a} – friend {b}. You win! Send it back.",
+    "ch.lost": "You {a} – friend {b}. So close. Try again?",
+    "ch.msg": "I saved him {n} times in a row in Not a Fake Ad: Choices. Beat me! Code: {code}",
+    "ch.copied": "Link copied – paste it to your friend.",
+    "pack.space": "New pack: Space!",
+    "pack.ocean": "New pack: Ocean!",
+    "pack.city": "New pack: City!",
     "rv.title": "Enjoying the game?",
     "rv.body": "A quick rating helps us a lot.",
     "rv.yes": "Love it! 😍",
@@ -212,6 +229,23 @@ const STRINGS = {
     'tip.first': 'Tap the thing that saves him. Quick, the bar is running!',
   },
   tr: {
+    "ch.title": "Arkadaşına meydan oku",
+    "ch.send": "Arkadaşına meydan oku",
+    "ch.how": "Sonsuz modu oyna, sonra skorunu gönder. Arkadaşına aynı tehlikeler aynı sırayla gelir.",
+    "ch.play": "Sonsuz modu oyna",
+    "ch.have": "Kodun mu var?",
+    "ch.go": "Bu kodu oyna",
+    "ch.bad": "Bu kod doğru görünmüyor.",
+    "ch.accept": "Kabul!",
+    "ch.in": "Arkadaşın onu üst üste {n} kez kurtardı. Geçebilir misin?",
+    "ch.beat": "Arkadaşını geçtin!",
+    "ch.won": "Sen {a} – arkadaşın {b}. Kazandın! Geri gönder.",
+    "ch.lost": "Sen {a} – arkadaşın {b}. Az kaldı. Bir daha?",
+    "ch.msg": "Not a Fake Ad: Choices'ta onu üst üste {n} kez kurtardım. Geçebilirsen geç! Kod: {code}",
+    "ch.copied": "Link kopyalandı – arkadaşına yapıştır.",
+    "pack.space": "Yeni paket: Uzay!",
+    "pack.ocean": "Yeni paket: Okyanus!",
+    "pack.city": "Yeni paket: Şehir!",
     "rv.title": "Oyunu sevdin mi?",
     "rv.body": "Kısa bir puan bize çok yardım eder.",
     "rv.yes": "Bayıldım! 😍",
@@ -423,7 +457,7 @@ const STRINGS = {
 // Words the hero and the monsters shout, written once in the scene code (in either language).
 const SAYS = {
   en: { 'BÖÖ!': 'BOO!', 'ISIRDI!': 'CHOMP!', 'SU...': 'WATER...', 'OH BE!': 'AHHH!', 'IYY!': 'EWW!', 'HAV HAV!': 'WOOF!', 'ŞAK!': 'WHACK!', 'MİYAV!': 'MEOW!', 'İİİK!': 'EEEK!', 'BEYİİN!': 'BRAINS!', 'KRAK!': 'CRACK!', 'YIHUU!': 'WHEEE!', 'ERİYORUM!': 'I\'M MELTING!', 'VRAK!': 'RIBBIT!', 'ÇEK!': 'PULL!', 'MİS!': 'FRESH!', 'PÖFF!': 'PEE-YOO!', 'UH UH!': 'OOH OOH!', 'KLİK!': 'CLICK!', 'ŞŞŞ...': 'SHHH...', 'FIIIT!': 'TWEET!', 'UAAAA!': 'WAAAH!' },
-  tr: { 'POF!': 'PUF!', 'AUU!': 'AYY!', 'CHOMP!': 'HAM!', 'BYE!': 'GÜLE GÜLE!', 'WHOOO!': 'UÇUYORUM!', 'AAAA!': 'AAAA!', 'Quick!': 'Çabuk!', 'BLUP!': 'BLUP!', 'NOM NOM!': 'HAM HAM!', 'UGH!': 'UGH!', 'OLE!': 'OLE!', 'GRRR!': 'GRRR!', 'PUF!': 'PUF!' },
+  tr: { 'POF!': 'PUF!', 'AUU!': 'AYY!', 'CHOMP!': 'HAM!', 'BYE!': 'GÜLE GÜLE!', 'WHOOO!': 'UÇUYORUM!', 'AAAA!': 'AAAA!', 'Quick!': 'Çabuk!', 'BLUP!': 'BLUP!', 'NOM NOM!': 'HAM HAM!', 'UGH!': 'UGH!', 'OLE!': 'OLE!', 'GRRR!': 'GRRR!', 'PUF!': 'PUF!', 'PHEW!': 'OH BE!', 'HEHEHE!': 'KIKIKİ!', 'ZZT!': 'ZZT!', 'ACHOO!': 'HAPŞUU!', 'GULP!': 'GLUK!', 'HONK!': 'DÜÜT!', 'COO!': 'GUGUK!', 'TOOT!': 'TÜÜT!' },
 };
 SAYS.es = esSays || {};
 SAYS.pt = ptSays || {};

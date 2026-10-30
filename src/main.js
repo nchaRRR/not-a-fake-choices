@@ -13,6 +13,9 @@ import { createAccount } from './account.js';
 import { runOpening } from './opening.js';
 import { TOOLS, OUTFITS as ALL_OUTFITS, PETS as ALL_PETS } from './art.js';
 import { HAZARDS, HAZARD_IDS } from './hazards.js';
+import { PACKS } from './packs.js';
+import { uiScale, watchLayout } from './tablet.js';
+import { encode as chEncode, decode as chDecode, linkFor as chLink, shareText, listenForChallenges } from './challenge.js';
 import { sfx, unlockAudio, setMuted } from './audio.js';
 import { startMusic, setMusicEnabled, setSong } from './music.js';
 import { track } from './analytics.js';
@@ -72,7 +75,7 @@ function rng(seed) {
 // The order the dangers come in. Levels 1-35 each bring one new danger, easiest first; extra stages
 // in multi-stage levels reuse dangers already met. After that it's a mix where none of the last ten
 // dangers comes back.
-const INTRO = ['fire', 'shark', 'bear', 'cold', 'desert', 'thief', 'bees', 'flood', 'ghost', 'bomb', 'dragon', 'vampire', 'gorilla', 'meteor', 'grease', 'dino', 'lava', 'mice', 'snake', 'ghostbaby', 'tornado', 'zombie', 'lion', 'sleepbear', 'spider', 'carsink', 'alien', 'thiefbone', 'boulder', 'airballoon', 'witch', 'electric', 'robot', 'bull', 'skunk', 'vampsun', 'avalanche', 'quicksand', 'tsunami', 'lightning', 'piranha'].filter((id) => HAZARDS[id]);
+const INTRO = ['fire', 'shark', 'bear', 'cold', 'desert', 'thief', 'bees', 'flood', 'ghost', 'bomb', 'dragon', 'vampire', 'gorilla', 'meteor', 'grease', 'dino', 'lava', 'mice', 'snake', 'ghostbaby', 'tornado', 'zombie', 'lion', 'sleepbear', 'spider', 'carsink', 'alien', 'thiefbone', 'boulder', 'airballoon', 'witch', 'electric', 'robot', 'bull', 'skunk', 'vampsun', 'avalanche', 'quicksand', 'tsunami', 'lightning', 'piranha', 'oxygen', 'blackhole', 'moon', 'octopus', 'jellyfish', 'whale', 'traffic', 'pigeons', 'subway'].filter((id) => HAZARDS[id]);
 for (const id of HAZARD_IDS) if (!INTRO.includes(id)) INTRO.push(id);
 const isBoss = (n) => n >= 25 && n % 25 === 0;
 const stageCount = (n) => (isBoss(n) ? 4 : n >= 30 && n % 5 === 0 ? 3 : n >= 12 && n % 3 === 0 ? 2 : 1);
@@ -148,8 +151,10 @@ function endlessStage(lv) {
   st.twist = lv.score >= 10 && roll < 0.15 ? 'swap' : lv.score >= 5 && roll < 0.35 ? 'mystery' : null;
   return st;
 }
-function endlessSpec() {
-  const lv = { n: -1, mode: 'endless', stages: [], score: 0, paid: 0, r: rng((Date.now() & 0xffffff) + 1) };
+// seed: the same seed always deals the same dangers (that's what makes a challenge fair).
+// target: the friend's score to beat when this run came from a challenge code.
+function endlessSpec(seed = (Date.now() & 0xffffff) + 1, target = 0) {
+  const lv = { n: -1, mode: 'endless', stages: [], score: 0, paid: 0, seed, target, r: rng(seed) };
   lv.stages.push(endlessStage(lv));
   return lv;
 }
@@ -423,7 +428,11 @@ function buildStage(quiet = false) {
   }
   if (level.mode === 'bonus' && !quiet) { setArms(hero, 'hold'); say('?'); }
   else if (level.n === 1 && stageIdx === 0 && !introAd && !quiet) say(t('quick'));
-  else if (stage.isNew && !quiet && !introAd) say(HAZARDS[stage.hazard].trick ? t('trick.new') : t('new.hazard'));
+  else if (stage.isNew && !quiet && !introAd) {
+    const hz = HAZARDS[stage.hazard];
+    // first danger of a pack gets the pack banner instead
+    if (hz.pack && PACKS[hz.pack][0] === stage.hazard) { say(t('pack.' + hz.pack)); track('pack_start', { pack: hz.pack }); } else say(hz.trick ? t('trick.new') : t('new.hazard'));
+  }
   else if (stage.twist && !quiet) say(t('twist.' + stage.twist));
 }
 
@@ -445,6 +454,7 @@ function runTwist() {
     const i = (level.n + stageIdx + (level.score || 0)) % cards.length;
     const j = (i + 1 + ((level.n || level.score || 0) % (cards.length - 1))) % cards.length;
     const a = cards[i], b = cards[j];
+    const k = uiScale();
     const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
     const mark = document.createElement('span');
     box.insertBefore(mark, a);
@@ -454,7 +464,7 @@ function runTwist() {
     for (const [el2, from] of [[a, ra], [b, rb]]) {
       const to = el2.getBoundingClientRect();
       el2.style.transition = 'none';
-      el2.style.transform = `translate(${from.left - to.left}px, ${from.top - to.top}px)`;
+      el2.style.transform = `translate(${(from.left - to.left) / k}px, ${(from.top - to.top) / k}px)`;
       void el2.offsetWidth;
       el2.style.transition = 'transform 0.35s cubic-bezier(.3,1.4,.5,1)';
       el2.style.transform = '';
@@ -502,6 +512,7 @@ async function pick(id, btn) {
     if (level.mode === 'endless') {
       level.score++;
       level.stages.push(endlessStage(level));
+      if (level.target && level.score === level.target + 1) { say(t('ch.beat')); confetti(40); track('challenge_beat', { score: level.score }); }
     }
     if (stageIdx < level.stages.length) buildStage();
     else won();
@@ -596,6 +607,8 @@ async function lost(type, fresh = false, tool = '') {
   $('lost-line').textContent = (tool && joke(stage.hazard, tool, getLang())) || t('fail.' + type);
   lastShare = { kind: 'fail', title: $('lost-line').textContent, line: level.mode === 'endless' ? t('endless.score', { n: level.score, b: save.endlessBest }) : t('sh.dare') };
   $('btn-lb-lost').hidden = level.mode !== 'endless';
+  $('btn-ch-send').hidden = level.mode !== 'endless' || level.score < 1;
+  $('lost-ch').hidden = !(level.mode === 'endless' && level.target);
   $('btn-revive').hidden = level.n === 0 || run.revived;
   $('lost-new').hidden = !fresh;
   const tip = !save.tipHint && level.mode === 'level' && level.n > 0;
@@ -611,6 +624,7 @@ async function lost(type, fresh = false, tool = '') {
     level.paid = level.score;
     writeSave();
     sc.textContent = (best ? t('endless.best') + ' ' : '') + t('endless.score', { n: level.score, b: save.endlessBest });
+    if (level.target) $('lost-ch').textContent = level.score > level.target ? t('ch.won', { a: level.score, b: level.target }) : t('ch.lost', { a: level.score, b: level.target });
     leaderboard.submit('endless', level.score);
     track('endless_end', { score: level.score });
   }
@@ -701,7 +715,8 @@ async function startIntro() {
   const right = btns.find((b) => b.dataset.tool === 'water');
   const wrong = btns.find((b) => b.dataset.tool !== 'water');
   const f = $('finger');
-  const at = (b) => { const r = b.getBoundingClientRect(); f.style.left = r.left + r.width / 2 + 'px'; f.style.top = r.top + r.height / 2 + 'px'; };
+  const k = uiScale();
+  const at = (b) => { const r = b.getBoundingClientRect(); f.style.left = (r.left + r.width / 2) / k + 'px'; f.style.top = (r.top + r.height / 2) / k + 'px'; };
   f.hidden = false;
   at(right);
   await wait(0.9);
@@ -716,11 +731,11 @@ async function startIntro() {
 // ---------------------------------------------------------------- UI
 function levelChip() {
   if (!level) return;
-  let txt = introAd ? t('intro.hud') : level.mode === 'endless' ? `${t('endless')} · ${level.score}` : level.mode === 'daily' ? t('daily.ch') : level.mode === 'bonus' ? t('bonus') : level.boss ? 'BOSS' : level.n === 0 ? t('intro.real') : t('level', { n: level.n });
+  let txt = introAd ? t('intro.hud') : level.mode === 'endless' ? `${t('endless')} · ${level.score}${level.target ? ' / ' + level.target : ''}` : level.mode === 'daily' ? t('daily.ch') : level.mode === 'bonus' ? t('bonus') : level.boss ? 'BOSS' : level.n === 0 ? t('intro.real') : t('level', { n: level.n });
   if (level.stages.length > 1 && level.mode !== 'endless') txt += ' · ' + t('stage', { a: stageIdx + 1, b: level.stages.length });
   $('hud-level').textContent = txt;
 }
-const screens = ['screen-wheel', 'screen-chest', 'screen-album', 'screen-ach', 'screen-home', 'screen-won', 'screen-lost', 'screen-intro', 'screen-shop', 'screen-hintbuy', 'screen-settings', 'screen-daily'];
+const screens = ['screen-challenge', 'screen-wheel', 'screen-chest', 'screen-album', 'screen-ach', 'screen-home', 'screen-won', 'screen-lost', 'screen-intro', 'screen-shop', 'screen-hintbuy', 'screen-settings', 'screen-daily'];
 function showScreen(id) { for (const s of screens) $(s).hidden = s !== id; }
 function updateCoins() { $('hud-coins').textContent = save.coins; $('home-coins').textContent = save.coins; }
 function updateHints() { $('hint-count').textContent = eventId === 'freehint' ? '∞' : save.hints > 0 ? save.hints : '+'; }
@@ -758,7 +773,7 @@ function goHome() {
 }
 
 // fail album
-const HZ_ICON = { lava: '🌋', shark: '🦈', bees: '🐝', fire: '🔥', bear: '🐻', ghost: '👻', cold: '❄️', flood: '🌊', bomb: '💣', thief: '🦹', dragon: '🐉', vampire: '🧛', desert: '🏜️', meteor: '☄️', dino: '🦖', snake: '🐍', alien: '🛸', tornado: '🌪️', carsink: '🚗', airballoon: '🎈', boulder: '🪨', spider: '🕷️', mice: '🐭', zombie: '🧟', lion: '🦁', gorilla: '🦍', witch: '🧙', robot: '🤖', bull: '🐂', avalanche: '🏔️', quicksand: '⏳', tsunami: '🌊', skunk: '🦨', lightning: '⚡', piranha: '🐟', grease: '🍳', electric: '🔌', sleepbear: '😴', vampsun: '☀️', thiefbone: '🦴', ghostbaby: '👶' };
+const HZ_ICON = { lava: '🌋', shark: '🦈', bees: '🐝', fire: '🔥', bear: '🐻', ghost: '👻', cold: '❄️', flood: '🌊', bomb: '💣', thief: '🦹', dragon: '🐉', vampire: '🧛', desert: '🏜️', meteor: '☄️', dino: '🦖', snake: '🐍', alien: '🛸', tornado: '🌪️', carsink: '🚗', airballoon: '🎈', boulder: '🪨', spider: '🕷️', mice: '🐭', zombie: '🧟', lion: '🦁', gorilla: '🦍', witch: '🧙', robot: '🤖', bull: '🐂', avalanche: '🏔️', quicksand: '⏳', tsunami: '🌊', skunk: '🦨', lightning: '⚡', piranha: '🐟', grease: '🍳', electric: '🔌', sleepbear: '😴', vampsun: '☀️', thiefbone: '🦴', ghostbaby: '👶', oxygen: '🧑‍🚀', blackhole: '🕳️', moon: '🌙', octopus: '🐙', jellyfish: '🪼', whale: '🐋', traffic: '🚗', pigeons: '🐦', subway: '🚇' };
 const albumCount = () => ENDINGS.filter((e) => save.album[e.key]).length;
 function renderAlbum() {
   const got = albumCount();
@@ -1111,8 +1126,55 @@ on('btn-chest', () => {
 });
 on('btn-next', () => { sfx.tap(); if (pendingChest) openChestScreen(() => afterWin(false)); else afterWin(false); });
 on('btn-won-home', () => { sfx.tap(); if (pendingChest) openChestScreen(() => afterWin(true)); else afterWin(true); });
-on('btn-retry', () => { sfx.tap(); if (level.mode === 'endless') startLevel(-1, endlessSpec()); else if (level.mode === 'daily') startLevel(-2, dailySpec()); else startLevel(level.n); });
+on('btn-retry', () => { sfx.tap(); if (level.mode === 'endless') startLevel(-1, level.target ? endlessSpec(level.seed, level.target) : endlessSpec()); else if (level.mode === 'daily') startLevel(-2, dailySpec()); else startLevel(level.n); });
 on('btn-endless', () => { sfx.tap(); startLevel(-1, endlessSpec()); });
+// ---------------------------------------------------------------- challenge a friend
+let chIncoming = null;
+function openChallenge(c) {
+  chIncoming = c || chIncoming;
+  $('ch-incoming').hidden = !chIncoming;
+  if (chIncoming) $('ch-in-line').textContent = t('ch.in', { n: chIncoming.score });
+  $('ch-err').hidden = true;
+  $('ch-badge').hidden = !chIncoming;
+  showScreen('screen-challenge');
+}
+function playChallenge(c) {
+  chIncoming = null;
+  $('ch-badge').hidden = true;
+  track('challenge_play', { target: c.score });
+  startLevel(-1, endlessSpec(c.seed, c.score));
+}
+on('btn-challenge', () => { sfx.tap(); openChallenge(); });
+on('btn-ch-close', () => { sfx.tap(); goHome(); });
+on('btn-ch-accept', () => { sfx.tap(); if (chIncoming) playChallenge(chIncoming); });
+on('btn-ch-endless', () => { sfx.tap(); startLevel(-1, endlessSpec()); });
+on('btn-ch-go', () => {
+  sfx.tap();
+  const c = chDecode($('ch-code').value);
+  if (!c) { $('ch-err').hidden = false; sfx.wrong && sfx.wrong(); return; }
+  playChallenge(c);
+});
+on('btn-ch-send', async () => {
+  sfx.tap();
+  if (!level || level.mode !== 'endless') return;
+  const code = chEncode(level.seed, level.score);
+  const r = await shareText(t('ch.msg', { n: level.score, code }), chLink(code));
+  track('challenge_send', { score: level.score, via: r });
+  if (r === 'copied') toast(t('ch.copied'), 'good');
+});
+watchLayout();
+listenForChallenges((c) => {
+  track('challenge_open', { target: c.score });
+  chIncoming = c;
+  $('ch-badge').hidden = false;
+  // a link opened at launch waits for the opening/daily screens; mid-run it only lights the badge
+  let tries = 0;
+  const show = () => {
+    if (chIncoming !== c || state !== 'home') return;
+    if (!$('screen-home').hidden) openChallenge(c); else if (++tries < 40) setTimeout(show, 1500);
+  };
+  setTimeout(show, 1500);
+});
 on('btn-dailych', () => { sfx.tap(); startLevel(-2, dailySpec()); });
 on('btn-album', () => { sfx.tap(); renderAlbum(); showScreen('screen-album'); });
 on('btn-album-close', () => { sfx.tap(); goHome(); });

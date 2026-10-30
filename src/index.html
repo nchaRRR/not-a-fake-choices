@@ -137,7 +137,7 @@
   @keyframes bob { 50% { transform: translateY(-4px); } }
 
   /* shop */
-  .card-wide { width: min(100%, 440px); max-height: calc(100vh - 40px); overflow-y: auto; }
+  .card-wide { width: min(100%, 440px); max-height: calc(100% - 40px); overflow-y: auto; }
   .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .card-head h2 { font-size: 28px; }
   #shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
@@ -319,6 +319,18 @@
   @keyframes tremble { 25% { transform: translate(-1px, 0) rotate(-0.6deg); } 75% { transform: translate(1px, 0) rotate(0.6deg); } }
   @keyframes cheer { 50% { transform: translateY(-3px) scale(1.02, 0.98); } }
   @media (prefers-reduced-motion: reduce) { .hero .h-inner { animation: none !important; } }
+
+  /* ---------- tablets & iPad ----------
+     The whole UI is drawn a size up (like a big phone), so menus keep their proportions instead of
+     floating tiny in the middle. In landscape the scene and the cards sit in a centred column
+     (tablet.js sets --col-x / --col-w) with a patterned backdrop on the sides. */
+  @media (min-width: 700px) and (min-height: 700px) { html { zoom: 1.25; } .lb-list { max-height: 40vh; } }
+  @media (min-width: 960px) and (min-height: 960px) { html { zoom: 1.5; } .lb-list { max-height: 34vh; } }
+  #stage, #hud, #bottom { left: var(--col-x, 0px); right: auto; width: var(--col-w, 100%); }
+  #ad-ribbon { left: calc(var(--col-x, 0px) + max(16px, env(safe-area-inset-left, 0px))); }
+  html.wide body { background: radial-gradient(circle at 12px 12px, rgba(255,255,255,0.09) 3px, transparent 4px) 0 0 / 28px 28px, linear-gradient(#3b2d5c, #2b2140); }
+  html.wide #stage { border-inline: 4px solid var(--ink); }
+  html.wide #bottom { border-inline: 4px solid var(--ink); }
 </style>
 
 <svg id="stage" viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene">
@@ -354,6 +366,7 @@
   <div class="home-top">
     <span class="chip"><span class="coin-icon" aria-hidden="true"></span><span id="home-coins">0</span></span>
     <div class="home-btns">
+      <button class="icon-btn" id="btn-challenge" type="button" aria-label="Challenge a friend" data-i18n-label="ch.title"><span style="font-size:21px;line-height:1">⚔️</span><span class="badge" id="ch-badge" hidden>!</span></button>
       <button class="icon-btn" id="btn-lb" type="button" aria-label="Leaderboard" data-i18n-label="lb.open"><span style="font-size:21px;line-height:1">🥇</span></button>
       <button class="icon-btn" id="btn-wheel" type="button" aria-label="Lucky wheel" data-i18n-label="wheel.title"><span style="font-size:22px;line-height:1">🎡</span><span class="badge" id="wheel-badge" hidden>1</span></button>
       <button class="icon-btn" id="btn-shop" type="button" aria-label="Shop" data-i18n-label="shop"><svg viewBox="0 0 24 24"><path d="M6 7V6a6 6 0 0 1 12 0v1h3l-1.5 14h-15L3 7zm2 0h8V6a4 4 0 0 0-8 0z"/></svg><span class="badge" id="shop-badge" hidden>!</span></button>
@@ -404,11 +417,29 @@
     <span class="new-tag" id="lost-new" hidden></span>
     <p id="lost-line" class="fail-joke"></p>
     <p id="lost-score" class="score-line" hidden></p>
+    <p id="lost-ch" class="score-line" hidden></p>
     <p id="lost-tip" class="tip-line" data-i18n="tip.hint" hidden></p>
     <button class="btn btn-gold" id="btn-revive" type="button"><span data-i18n="revive">Watch an ad, try this part again</span></button>
     <button class="btn btn-big btn-green" id="btn-retry" type="button" data-i18n="retry">Try again</button>
     <div class="row-btns"><button class="btn btn-plain btn-sm" id="btn-lost-home" type="button" data-i18n="home">Home</button><button class="btn btn-sm" id="btn-share-lost" type="button"><span>📤 </span><span data-i18n="sh.btn">Share</span></button></div>
+    <button class="btn btn-sm" id="btn-ch-send" type="button" hidden><span>⚔️ </span><span data-i18n="ch.send">Challenge a friend</span></button>
     <button class="btn btn-plain btn-sm" id="btn-lb-lost" type="button" hidden><span>🏆 </span><span data-i18n="lb.title">Leaderboard</span></button>
+  </div>
+</section>
+
+<section id="screen-challenge" class="screen screen-dim" hidden>
+  <div class="card">
+    <h2>⚔️ <span data-i18n="ch.title">Challenge a friend</span></h2>
+    <div id="ch-incoming" hidden>
+      <p id="ch-in-line" class="score-line"></p>
+      <button class="btn btn-big btn-green" id="btn-ch-accept" type="button" data-i18n="ch.accept">Accept!</button>
+    </div>
+    <p data-i18n="ch.how">Play Endless, then send your score. Your friend gets the same dangers in the same order.</p>
+    <button class="btn btn-gold" id="btn-ch-endless" type="button"><span>♾️ </span><span data-i18n="ch.play">Play Endless</span></button>
+    <p class="sec-title" data-i18n="ch.have">Got a code?</p>
+    <input id="ch-code" class="text-input" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" placeholder="ABC12-E-4F" style="text-align:center;font-weight:800;letter-spacing:0.08em">
+    <p id="ch-err" class="tip-line" hidden data-i18n="ch.bad">That code doesn't look right.</p>
+    <div class="row-btns"><button class="btn btn-plain btn-sm" id="btn-ch-close" type="button" data-i18n="close">Close</button><button class="btn btn-sm btn-green" id="btn-ch-go" type="button" data-i18n="ch.go">Play this code</button></div>
   </div>
 </section>
 

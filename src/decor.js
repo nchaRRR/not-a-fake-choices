@@ -14,6 +14,8 @@ const MOOD = {
   robot: 'room dust', bull: 'day clouds dust', avalanche: 'snowday', quicksand: 'hot dust', tsunami: 'day clouds birds',
   skunk: 'day leaves grass', lightning: 'storm', piranha: 'day clouds leaves', grease: 'room embers dust', electric: 'room dust',
   sleepbear: 'cave fireflies dust', vampsun: 'room dust', thiefbone: 'night stars fireflies grass', ghostbaby: 'night room dust',
+  oxygen: 'night stars shoot', blackhole: 'night stars shoot', moon: 'night stars', octopus: 'day clouds birds', jellyfish: 'water bubbles',
+  whale: 'day clouds birds', traffic: 'day clouds birds', pigeons: 'day clouds', subway: 'room dust',
 };
 
 function el(tag, attrs, parent) {

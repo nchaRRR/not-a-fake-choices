@@ -31,6 +31,14 @@
                 <data android:scheme="com.nimoriq.nfachoices" android:host="auth-callback" />
             </intent-filter>
 
+            <!-- Arkadaşına meydan oku linki: com.nimoriq.nfachoices://challenge?c=KOD -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.nimoriq.nfachoices" android:host="challenge" />
+            </intent-filter>
+
         </activity>
 
         <!-- AdMob -->

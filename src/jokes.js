@@ -209,6 +209,51 @@ const J = {
     candle: ['The baby ghost was scared of the dark. And of fire.', 'Bebek hayalet karanlıktan korkuyordu. Ateşten de.'],
     mirror: ['It saw itself crying. Cried louder.', 'Aynada ağladığını gördü. Daha çok ağladı.'],
   },
+  oxygen: {
+    scissors: ['He cut the only thing tying him to the station.', 'İstasyona bağlı olduğu tek ipi kesti.'],
+    fan: ['A fan in space. The air left faster.', 'Uzayda vantilatör. Hava daha hızlı kaçtı.'],
+    balloon: ['He tried to save the air in a balloon. Cute.', 'Havayı balona doldurmaya çalıştı. Tatlı.'],
+  },
+  blackhole: {
+    anchor: ['An anchor. In space. It fell in first.', 'Uzayda çapa. Önce o düştü.'],
+    vacuum: ['The black hole is the bigger vacuum.', 'Kara delik daha büyük bir süpürge.'],
+    kite: ['No wind in space. The kite agreed.', 'Uzayda rüzgar yok. Uçurtma da hak verdi.'],
+  },
+  moon: {
+    balloon: ['Low gravity plus a balloon. Goodbye, Earth.', 'Düşük yerçekimi artı balon. Elveda Dünya.'],
+    parachute: ['A parachute only works if you fall. He went up.', 'Paraşüt düşersen işe yarar. O yükseldi.'],
+    skateboard: ['One kickflip on the moon. Never came down.', 'Ayda tek kickflip. Bir daha inmedi.'],
+  },
+  octopus: {
+    sword: ['Eight arms. He cut one. Seven left.', 'Sekiz kol. Birini kesti. Yedi kaldı.'],
+    rod: ['He went fishing. The fish went fishing too.', 'Balık tutmaya çalıştı. Balık da onu tuttu.'],
+    steak: ['The octopus said thanks and took both.', 'Ahtapot teşekkür etti, ikisini de aldı.'],
+  },
+  jellyfish: {
+    ring: ['Floating right into the jellyfish. Great plan.', 'Denizanalarının içine süzüldü. Harika plan.'],
+    banana: ['Jellyfish do not eat bananas. They zap.', 'Denizanası muz yemez. Çarpar.'],
+    sponge: ['A sponge is a sea animal too. Not a friendly one.', 'Sünger de deniz canlısı. Ama dostu değil.'],
+  },
+  whale: {
+    honey: ['Honey on the raft. The whale loves sweets.', 'Salda bal. Balina tatlıya bayılır.'],
+    torch: ['Now he can see the inside of the whale.', 'Artık balinanın içini görebiliyor.'],
+    flute: ['The whale liked the song. It ate the band.', 'Balina şarkıyı sevdi. Grubu da yedi.'],
+  },
+  traffic: {
+    balloon: ['The driver saw a balloon. Did not brake.', 'Şoför balonu gördü. Fren yapmadı.'],
+    drum: ['Louder than the horn. Still not a brake.', 'Kornadan yüksek. Ama fren değil.'],
+    banana: ['He threw a banana. The car slid faster.', 'Muz attı. Araba daha hızlı kaydı.'],
+  },
+  pigeons: {
+    cheese: ['Cheese, for pigeons. Now they want lunch.', 'Güvercinlere peynir. Şimdi öğle yemeği istiyorlar.'],
+    broccoli: ['The pigeons took one look and attacked anyway.', 'Güvercinler bir baktı, yine saldırdı.'],
+    yarn: ['Pigeons are not cats. Bad news.', 'Güvercinler kedi değil. Kötü haber.'],
+  },
+  subway: {
+    hammer: ['He hit the rail. The rail won.', 'Raya vurdu. Ray kazandı.'],
+    magnet: ['A magnet on a steel rail. Stuck even harder.', 'Çelik raya mıknatıs. Daha da yapıştı.'],
+    rope: ['He tied himself to the rail. Very safe.', 'Kendini raya bağladı. Çok güvenli.'],
+  },
 };
 
 const MORE = { es: esJ || {}, pt: ptJ || {}, de: deJ || {}, fr: frJ || {} };

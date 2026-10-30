@@ -2,6 +2,7 @@
 // gives every wrong tool its own (comic) ending. Scene coordinates: 400 x 520, ground near y 430.
 // The ctx passed in comes from main.js: layer, hero, T (tween), wait, tool(), puff(), helpers.
 import { el, g, place, setFace, setArms, paintHero } from './art.js';
+import { PACK_HAZARDS, PACK_AMB } from './packs.js';
 
 const INK = '#2b2140';
 const q = (ctx, cls) => ctx.layer.querySelector('.' + cls);
@@ -1385,6 +1386,8 @@ export const HAZARDS = {
 
 // background sound for each danger (sfx.amb kinds)
 const AMB = {"lava": "bubble", "shark": "wave", "bees": "buzz", "fire": "crackle", "bear": "growl", "ghost": "wail", "cold": "wind", "flood": "wave", "bomb": "fuse", "thief": "steps", "dragon": "growl", "vampire": "wail", "desert": "wind", "meteor": "rumble", "dino": "stomp", "snake": "hiss", "alien": "ufo", "tornado": "wind", "carsink": "bubble", "airballoon": "wind", "boulder": "rumble", "spider": "hiss", "mice": "squeak", "zombie": "growl", "lion": "growl", "gorilla": "drum", "witch": "cackle", "robot": "beep", "bull": "snort", "avalanche": "rumble", "quicksand": "bubble", "tsunami": "wave", "skunk": "hiss", "lightning": "thunder", "piranha": "splash", "grease": "sizzle", "electric": "zap", "sleepbear": "snore", "vampsun": "wail", "thiefbone": "steps", "ghostbaby": "cry"};
+Object.assign(HAZARDS, PACK_HAZARDS);
+Object.assign(AMB, PACK_AMB);
 for (const [id, kind] of Object.entries(AMB)) if (HAZARDS[id]) HAZARDS[id].amb = kind;
 
 export const HAZARD_IDS = Object.keys(HAZARDS);
