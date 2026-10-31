@@ -4,7 +4,8 @@
 import { el, g, place, makeHero, setFace, setArms, paintHero, toolSvg, toolNode, OUTFITS as OUTFITS_ALL, setOutfit, PETS, setPet, setSeasonHat } from './art.js';
 import { seasonNow, buildSnow, garland } from './season.js';
 import { createCards } from './cards.js';
-import { joke } from './jokes.js';
+import { joke, _J } from './jokes.js';
+import { VARIANTS, judge, wanted as pzWanted, combine as pzCombine, RECIPES, COMBOS, CHAINS, INV_SETS, PZ_LEVELS, hazardsOf, solveChain, solveInv, clueItemFor, CLUE_IDS, TWO_IDS, applyFlags, rule as pzRule } from './puzzles.js';
 import { showRewarded, adPrivacy, setSkipAds } from './ads.js';
 import { createPayments, PRODUCTS } from './payments.js';
 import { scheduleNotifications, askNotificationPermission } from './notify.js';
@@ -101,22 +102,82 @@ function rng(seed) {
     return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
   };
 }
-// The order the dangers come in. Levels 1-35 each bring one new danger, easiest first; extra stages
-// in multi-stage levels reuse dangers already met. After that it's a mix where none of the last ten
-// dangers comes back.
+// The order the dangers come in. Each classic level brings one new danger until all are met, easiest
+// first; extra stages in multi-stage levels reuse dangers already met. After that it's a mix where none
+// of the last ten dangers comes back. Puzzle levels (see puzzleKind) sit between the classic ones.
 const INTRO = ['fire', 'shark', 'bear', 'cold', 'desert', 'thief', 'bees', 'flood', 'ghost', 'bomb', 'dragon', 'vampire', 'gorilla', 'meteor', 'grease', 'dino', 'lava', 'mice', 'snake', 'ghostbaby', 'tornado', 'zombie', 'lion', 'sleepbear', 'spider', 'carsink', 'alien', 'thiefbone', 'boulder', 'airballoon', 'witch', 'electric', 'robot', 'bull', 'skunk', 'vampsun', 'avalanche', 'quicksand', 'tsunami', 'lightning', 'piranha', 'oxygen', 'blackhole', 'moon', 'octopus', 'jellyfish', 'whale', 'traffic', 'pigeons', 'subway'].filter((id) => HAZARDS[id]);
 for (const id of HAZARD_IDS) if (!INTRO.includes(id)) INTRO.push(id);
 const isBoss = (n) => n >= 25 && n % 25 === 0;
 const stageCount = (n) => (isBoss(n) ? 4 : n >= 30 && n % 5 === 0 ? 3 : n >= 12 && n % 3 === 0 ? 2 : 1);
+
+// Puzzle levels join after the basics. Each kind first gets an easy teaching level (9 clue, 11 two-step,
+// 14 combine, 17 chain, 20 inventory); from 21 on every third level is a puzzle, so classics stay the
+// majority. Boss levels are always classic.
+const PZ_INTRO = { 9: 'clue', 11: 'two', 14: 'combo', 17: 'chain', 20: 'inv' };
+const PZ_CYCLE = ['clue', 'chain', 'two', 'inv', 'combo'];
+export const PZ_ICON = { clue: '🔍', two: '✌️', combo: '🧪', chain: '⛓️', inv: '🎒' };
+function puzzleKind(n) {
+  if (n <= 0) return null;
+  if (PZ_INTRO[n]) return PZ_INTRO[n];
+  if (n > 20 && n % 3 === 0 && !isBoss(n)) return PZ_CYCLE[(n / 3) % PZ_CYCLE.length];
+  return null;
+}
+// classic levels are counted on their own, so the INTRO order is the same with puzzles in between
+const classicOf = [0];
+const levelOfClassic = [0];
+function classicIndex(n) {
+  while (classicOf.length <= n) {
+    const m = classicOf.length;
+    if (puzzleKind(m)) classicOf.push(0);
+    else { levelOfClassic.push(m); classicOf.push(levelOfClassic.length - 1); }
+  }
+  return classicOf[n];
+}
+const classicLevel = (c) => { while (levelOfClassic.length <= c) classicIndex(classicOf.length); return levelOfClassic[c]; };
+// dangers met in classic levels before level n (plus the lava from the first ad)
+function knownAt(n) {
+  let c = 0;
+  for (let m = n - 1; m > 0; m--) if (!puzzleKind(m)) { c = classicIndex(m); break; }
+  return new Set(['lava', ...INTRO.slice(0, c)]);
+}
+// Which puzzle a level gets: the teaching one first, then the least played one whose dangers are known.
+const pzSeq = [null];
+const pzUses = {};
+function puzzleAt(n) {
+  while (pzSeq.length <= n) {
+    const m = pzSeq.length;
+    const kind = puzzleKind(m);
+    let pick = null;
+    if (kind) {
+      const pool = PZ_LEVELS[kind];
+      let idx = 0;
+      if (pzUses[kind]) {
+        const known = knownAt(m);
+        const all = pool.map((e, i) => i).filter((i) => i > 0);
+        const ok = all.filter((i) => hazardsOf(kind, pool[i]).every((h) => known.has(h)));
+        const from = ok.length ? ok : all;
+        const least = Math.min(...from.map((i) => pzUses[kind + i] || 0));
+        idx = from.find((i) => (pzUses[kind + i] || 0) === least);
+      }
+      pzUses[kind] = (pzUses[kind] || 0) + 1;
+      pzUses[kind + idx] = (pzUses[kind + idx] || 0) + 1;
+      pick = { kind, idx, entry: pool[idx] };
+    }
+    pzSeq.push(pick);
+  }
+  return pzSeq[n];
+}
+
 const seqCache = [[]];
 const seqRecent = [];
 const seqUses = {};
+// m is a classic index (the m-th classic level), not a level number
 function levelHazards(n) {
   while (seqCache.length <= n) {
     const m = seqCache.length;
     const r = rng(m * 131 + 7);
     const list = [];
-    for (let k = 0; k < stageCount(m); k++) {
+    for (let k = 0; k < stageCount(classicLevel(m)); k++) {
       let id;
       if (k === 0 && m <= INTRO.length) id = INTRO[m - 1];
       else {
@@ -138,13 +199,16 @@ function levelHazards(n) {
 }
 export function levelSpec(n) {
   if (n === 0) return { n, stages: [{ hazard: 'lava', options: ['gasoline', 'water'], time: 12 }] };
+  const pz = puzzleAt(n);
+  if (pz) return puzzleSpec(n, pz);
+  const c = classicIndex(n);
   const r = rng(n * 7919 + 17);
   const choices = n <= 6 ? 2 : n < 40 ? 3 : 4;
   const time = Math.max(4.5, 10 - n * 0.09) * (isBoss(n) ? 0.85 : 1);
   const decoy = n < 8 ? 0 : n < 25 ? 0.4 : 0.6;
-  const list = levelHazards(n).map((id, k) => {
+  const list = levelHazards(c).map((id, k) => {
     const st = makeStage(id, r, choices, time, decoy);
-    if (k === 0 && n <= INTRO.length) st.isNew = true;
+    if (k === 0 && c <= INTRO.length) st.isNew = true;
     const roll = r();
     st.twist = n >= 28 && roll < 0.12 ? 'swap' : n >= 18 && roll < 0.32 ? 'mystery' : null;
     return st;
@@ -170,12 +234,70 @@ function makeStage(id, r, choices, time, decoy = 0) {
   for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [options[i], options[j]] = [options[j], options[i]]; }
   return { hazard: id, options, time };
 }
+const shuffled = (a, r) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+// A clue stage: the danger in its normal state or in a clue state; the cards always hold both answers.
+function clueStage(e, r, choices, time) {
+  const v = VARIANTS[e];
+  const h = v ? v.base : e;
+  const hz = HAZARDS[h];
+  const clue = v ? v.correct : clueItemFor(h);
+  const wr = shuffled(Object.keys(hz.wrong).filter((w) => w !== clue), r);
+  // both states start at the same moment, the clue variant's (so the detail is on screen at once)
+  const t0 = VARIANTS[v ? e : CLUE_IDS.find((id) => VARIANTS[id].base === h)].t0 || 0;
+  return { hazard: h, v: v ? e : null, clue: true, t0, options: shuffled([hz.correct, clue, ...wr.slice(0, choices - 2)], r), time };
+}
+// A two-step stage: both steps plus wrong items from the danger.
+function twoStage(e, r, choices, time) {
+  const v = VARIANTS[e];
+  const hz = HAZARDS[v.base];
+  const wr = shuffled(Object.keys(hz.wrong).filter((w) => !v.steps.includes(w)), r);
+  return { hazard: v.base, v: e, steps: v.steps, options: shuffled([...v.steps, ...wr.slice(0, choices - 2)], r), time };
+}
+function puzzleSpec(n, { kind, idx, entry }) {
+  const r = rng(n * 7919 + 17);
+  const teach = idx === 0;
+  const time = Math.max(5.5, 11 - n * 0.06);
+  const choices = n >= 40 ? 4 : 3;
+  const spec = { n, mode: 'level', kind, teach, pz: kind + idx, stages: [] };
+  if (kind === 'clue') spec.stages = entry.map((e) => clueStage(e, r, choices, time + 2));
+  else if (kind === 'two') spec.stages = entry.map((e) => twoStage(e, r, teach ? 3 : 4, time * 1.7));
+  else if (kind === 'combo') {
+    spec.stages = entry.map((e) => {
+      const h = e.replace('*', '');
+      const c = COMBOS[h];
+      return { hazard: h, combo: true, correct: c.out, options: shuffled((e.endsWith('*') ? c.teach : c.cards).slice(), r), time: teach ? 24 : Math.max(11, 17 - n * 0.05) };
+    });
+  } else if (kind === 'chain') {
+    const ch = CHAINS.find((x) => x.id === entry);
+    spec.bag = shuffled(ch.bag.slice(), r);
+    spec.stages = ch.stages.map((h) => ({ hazard: h, alts: true, options: [], time: time + 3 }));
+    spec.solution = solveChain(ch)[0];
+  } else if (kind === 'inv') {
+    const s = INV_SETS.find((x) => x.id === entry);
+    spec.items = shuffled(s.items.slice(), r);
+    spec.stages = s.hz.map((h) => ({ hazard: h, alts: true, options: [], time: 99 }));
+    spec.solution = solveInv(s)[0];
+    spec.planTime = teach ? 45 : Math.max(22, 34 - n * 0.08);
+  }
+  return spec;
+}
 // Endless: random dangers, never the same twice in a row, the clock gets shorter every save.
 function endlessStage(lv) {
   let id;
   do id = HAZARD_IDS[Math.floor(lv.r() * HAZARD_IDS.length)]; while (id === lv.lastId);
   lv.lastId = id;
-  const st = makeStage(id, lv.r, lv.score < 8 ? 3 : 4, Math.max(2.6, 7 - lv.score * 0.18), 0.5);
+  const time = Math.max(2.6, 7 - lv.score * 0.18);
+  // now and then a clue or a two-step danger, never two in a row
+  const pzRoll = lv.r();
+  if (lv.score >= 6 && !lv.lastPz && pzRoll < 0.12) {
+    lv.lastPz = true;
+    if (pzRoll < 0.08) { const cid = CLUE_IDS[Math.floor(lv.r() * CLUE_IDS.length)]; lv.lastId = VARIANTS[cid].base; return clueStage(lv.r() < 0.5 ? cid : VARIANTS[cid].base, lv.r, 4, time + 1.5); }
+    const tid = TWO_IDS[Math.floor(lv.r() * TWO_IDS.length)];
+    lv.lastId = VARIANTS[tid].base;
+    return twoStage(tid, lv.r, 3, time * 1.7);
+  }
+  lv.lastPz = false;
+  const st = makeStage(id, lv.r, lv.score < 8 ? 3 : 4, time, 0.5);
   const roll = lv.r();
   st.twist = lv.score >= 10 && roll < 0.15 ? 'swap' : lv.score >= 5 && roll < 0.35 ? 'mystery' : null;
   return st;
@@ -207,11 +329,23 @@ function dailySpec() {
   const r = rng(d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate());
   const ids = HAZARD_IDS.slice();
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-  return { n: -2, mode: 'daily', stages: ids.slice(0, 5).map((id, k) => makeStage(id, r, k < 3 ? 3 : 4, 6, 0.5)) };
+  const stages = ids.slice(0, 5).map((id, k) => makeStage(id, r, k < 3 ? 3 : 4, 6, 0.5));
+  // the fourth danger is a clue or a two-step one (whose danger isn't already in today's five)
+  const pz = [...CLUE_IDS, ...TWO_IDS].filter((v) => !ids.slice(0, 5).includes(VARIANTS[v].base));
+  const vid = pz[Math.floor(r() * pz.length)];
+  stages[3] = VARIANTS[vid].kind === 'clue' ? clueStage(vid, r, 4, 8) : twoStage(vid, r, 4, 10);
+  return { n: -2, mode: 'daily', stages };
 }
 
-// Every distinct fail ending (danger + the way it goes wrong), for the album.
-export const ENDINGS = HAZARD_IDS.flatMap((h) => Object.keys(HAZARDS[h].wrong).map((tool) => ({ h, tool, type: HAZARDS[h].wrong[tool], key: h + ':' + tool })));
+// Every distinct fail ending (danger + the way it goes wrong), for the album. The classic ones, then the
+// endings only puzzles reach (clue states, wrong orders, combined items): every pair with its own joke.
+const CLASSIC_ENDINGS = HAZARD_IDS.flatMap((h) => Object.keys(HAZARDS[h].wrong).map((tool) => ({ h, sid: h, tool, type: HAZARDS[h].wrong[tool], key: h + ':' + tool })));
+const CLASSIC_KEYS = new Set(CLASSIC_ENDINGS.map((e) => e.key));
+export const ENDINGS = [...CLASSIC_ENDINGS, ...Object.keys(_J).flatMap((sid) => Object.keys(_J[sid]).map((tool) => ({ h: sid.split('~')[0], sid, tool, key: sid + ':' + tool, pz: true })))
+  .filter((e) => HAZARDS[e.h] && !CLASSIC_KEYS.has(e.key))];
+const END_KEYS = new Set(ENDINGS.map((e) => e.key));
+// the album entry a wrong pick unlocks: the puzzle's own ending if it has one, else the danger's
+const albumKey = (sid, h, tool) => (END_KEYS.has(sid + ':' + tool) ? sid + ':' + tool : END_KEYS.has(h + ':' + tool) ? h + ':' + tool : '');
 const albumCoins = () => (eventId === 'album' ? 45 : 15);
 // older saves stored one ending per kind of fail; give them the first item of that kind
 for (const k of Object.keys(save.album)) {
@@ -257,7 +391,7 @@ function say(text) {
   const box = g({ class: 'bubble' });
   const w = Math.max(90, text.length * 15 + 30);
   box.innerHTML = `<rect x="${-w / 2}" y="-30" width="${w}" height="44" rx="16" fill="#fff" stroke="#2b2140" stroke-width="4"/><path d="M-8 14 l8 14 l8 -14" fill="#fff" stroke="#2b2140" stroke-width="4" stroke-linejoin="round"/><rect x="-10" y="10" width="20" height="6" fill="#fff"/><text y="2" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="24" fill="#2b2140">${text}</text>`;
-  const m = (hero.getAttribute('transform') || '').match(/translate\(([-\d.]+) ([-\d.]+)/);
+  const m = hero && (hero.getAttribute('transform') || '').match(/translate\(([-\d.]+) ([-\d.]+)/);
   const hx = m ? Number(m[1]) : 200;
   const hy = m ? Number(m[2]) : 430;
   place(box, Math.min(330, Math.max(70, hx)), Math.max(50, hy - 190));
@@ -281,7 +415,7 @@ function heroXY() {
 }
 function makeCtx(layer) {
   return {
-    layer, hero, T, wait, sfx,
+    layer, hero, T, wait, sfx, step: 0,
     tool(id, x, y, s = 0.6) {
       const n = g({}, '');
       const inner = toolNode(id);
@@ -292,7 +426,7 @@ function makeCtx(layer) {
       return n;
     },
     puff, say, shake, flash,
-    t: () => stageT,
+    t: () => stageT + ((stage && stage.t0) || 0),
     notes(x, y) {
       for (let i = 0; i < 6; i++) {
         const n = el('text', { 'font-size': 30, 'font-weight': 800, fill: '#2b2140', 'text-anchor': 'middle' });
@@ -387,6 +521,10 @@ function startLevel(n, spec) {
   stageIdx = 0;
   run = { fracs: [], hint: false, revived: false };
   paused = false;
+  // chains carry a bag and flags across their stages; inventory puzzles start with a plan
+  level.flags = {};
+  if (level.kind === 'chain') level.bag = level.bag.slice();
+  if (level.kind === 'inv') { level.plan = [null, null, null]; level.running = false; }
   showScreen(null);
   $('hud').hidden = false;
   $('bottom').hidden = false;
@@ -405,22 +543,49 @@ function startLevel(n, spec) {
     const my = gen;
     wait(1.3).then(() => { if (my !== gen) return; $('stamp').hidden = true; paused = false; });
   }
+  // the first level of each puzzle kind explains it once
+  if (level.kind && !(save.pzSeen || {})[level.kind]) showTeach(level.kind);
   track('level_start', { level: n });
+}
+
+function on2(id, fn) { $(id).addEventListener('click', (e) => { e.stopPropagation(); unlockAudio(); fn(); }); }
+// a card for the bottom row; its item is read at tap time, since combining can change it
+function choiceCard(id, box, onTap) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'choice';
+  b.dataset.tool = id;
+  b.innerHTML = toolSvg(id);
+  b.style.setProperty('--i', box.childElementCount);
+  b.addEventListener('click', () => { if (performance.now() - lastDrag < 350) return; onTap(b); });
+  box.appendChild(b);
+  return b;
 }
 
 function buildStage(quiet = false) {
   stage = level.stages[stageIdx];
+  if (level.kind === 'inv' && !level.running && !quiet) { buildPlan(); return; }
   const hz = HAZARDS[stage.hazard];
+  const v = stage.v ? VARIANTS[stage.v] : null;
+  const flags = level.flags || {};
+  stage.step = 0;
+  if (level.kind === 'chain') {
+    if (!quiet) { stage.bagStart = level.bag.slice(); stage.flagsStart = { ...flags }; }
+    stage.options = level.bag.slice();
+  }
   sceneG.innerHTML = '';
   fxG.innerHTML = '';
   parts.length = 0;
   const layer = g({});
   layer.innerHTML = hz.bg();
   sceneG.appendChild(layer);
-  hero = makeHero();
+  // a dog won over in an earlier chain stage walks along as the hero's pet
+  hero = makeHero(undefined, flags.dog ? ALL_PETS.find((p) => p.id === 'dog') : undefined);
   layer.appendChild(hero);
   ctx = makeCtx(layer);
   hz.setup(ctx);
+  if (v) v.mark.call(hz, ctx);
+  applyFlags(ctx, flags);
   decor = createDecor(layer, stage.hazard, hero);
   stageT = 0;
   ambT = 0.4;
@@ -431,21 +596,19 @@ function buildStage(quiet = false) {
   // choices
   const box = $('choices');
   box.innerHTML = '';
-  $('timer').style.visibility = level.mode === 'bonus' ? 'hidden' : '';
+  box.classList.toggle('combo', !!stage.combo);
+  setComboMode(false);
+  const running = level.kind === 'inv' && level.running;
+  $('timer').style.visibility = level.mode === 'bonus' || running ? 'hidden' : '';
+  $('prow').hidden = !stage.combo || quiet;
+  $('btn-combo').hidden = !stage.combo;
+  $('btn-go').hidden = true;
+  if (stage.combo) $('prow-txt').textContent = t('combo.hint');
   if (level.mode === 'bonus') {
     box.innerHTML = `<div class="choice item-card">${toolSvg(stage.item)}</div><button type="button" class="guess yes">✓<small>${t('bonus.yes')}</small></button><button type="button" class="guess no">✗<small>${t('bonus.no')}</small></button>`;
     box.querySelector('.yes').addEventListener('click', () => guess(true));
     box.querySelector('.no').addEventListener('click', () => guess(false));
-  } else stage.options.forEach((id) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'choice';
-    b.dataset.tool = id;
-    b.innerHTML = toolSvg(id);
-    b.style.setProperty('--i', box.childElementCount);
-    b.addEventListener('click', () => pick(id, b));
-    box.appendChild(b);
-  });
+  } else stage.options.forEach((id) => { const b = choiceCard(id, box, (x) => pick(x.dataset.tool, x)); if (stage.combo) enableDrag(b); });
   $('timer').classList.remove('low');
   twistDone = false;
   $('btn-time').classList.remove('used');
@@ -455,7 +618,20 @@ function buildStage(quiet = false) {
     b.classList.add('mystery');
     b.innerHTML = '<span class="q">?</span>';
   }
+  if (!quiet && (level.kind === 'chain' || level.kind === 'inv' || (level.kind && level.stages.length > 1))) pathStrip();
+  if (running) {
+    // the plan plays itself out, one danger after the other
+    const my = gen;
+    const b = box.firstElementChild;
+    b.dataset.auto = '1';
+    wait(0.7).then(() => { if (my === gen && state === 'choose') pick(b.dataset.tool, b); });
+    return;
+  }
   if (level.mode === 'bonus' && !quiet) { setArms(hero, 'hold'); say('?'); }
+  else if (stage.clue && !quiet) say(t('trick.new'));
+  else if (stage.steps && !quiet) say(t('two.say'));
+  else if (stage.combo && !quiet) say(t('combo.say'));
+  else if (level.kind === 'chain' && !quiet) say(stageIdx ? t('chain.next') : t('chain.say'));
   else if (level.n === 1 && stageIdx === 0 && !introAd && !quiet) say(t('quick'));
   else if (stage.isNew && !quiet && !introAd) {
     const hz = HAZARDS[stage.hazard];
@@ -463,6 +639,238 @@ function buildStage(quiet = false) {
     if (hz.pack && PACKS[hz.pack][0] === stage.hazard) { say(t('pack.' + hz.pack)); track('pack_start', { pack: hz.pack }); } else say(hz.trick ? t('trick.new') : t('new.hazard'));
   }
   else if (stage.twist && !quiet) say(t('twist.' + stage.twist));
+}
+
+// the dangers of a puzzle level as a row of icons under the HUD: done, now, still to come
+function pathStrip() {
+  $('taunt').innerHTML = `<span class="path">${level.stages.map((st, i) => `<b class="${i < stageIdx ? 'done' : i === stageIdx && !(level.kind === 'inv' && !level.running) ? 'now' : ''}">${HZ_ICON[st.hazard] || '?'}</b>`).join('<i>›</i>')}</span>`;
+}
+
+// ---------------------------------------------------------------- teaching cards (once per puzzle kind)
+function showTeach(kind) {
+  paused = true;
+  const ic = (id) => toolSvg(id, 44);
+  const art = {
+    clue: `<span>🔍</span>${ic('honey')}<b>/</b>${ic('slippers')}`,
+    two: `<em>1</em>${ic('hammer')}<b>›</b><em>2</em>${ic('campfire')}`,
+    combo: `${ic('candle')}<b>+</b>${ic('bottle')}<b>=</b>${ic('lantern')}`,
+    chain: `${ic('water')}${ic('scissors')}<b>›</b><span>💣</span><b>›</b><span>🌋</span>`,
+    inv: `<span>🦈</span><span>🐻</span><span>🏜️</span><b>+</b>${ic('steak')}${ic('honey')}${ic('bottle')}`,
+  };
+  $('teach-title').textContent = t('pz.' + kind + '.t');
+  $('teach-body').textContent = t('pz.' + kind + '.b');
+  $('teach-art').innerHTML = art[kind];
+  showScreen('screen-teach');
+  track('puzzle_teach', { kind });
+}
+on2('btn-teach', () => {
+  sfx.tap();
+  save.pzSeen = { ...(save.pzSeen || {}), [level.kind]: 1 };
+  writeSave();
+  showScreen(null);
+  paused = false;
+});
+
+// ---------------------------------------------------------------- combining two cards into a new item
+let comboMode = false;
+let comboFirst = null;
+let lastDrag = 0;
+function setComboMode(onOff) {
+  comboMode = onOff;
+  if (comboFirst) comboFirst.classList.remove('sel');
+  comboFirst = null;
+  $('btn-combo').classList.toggle('on', onOff);
+  $('choices').classList.toggle('combining', onOff);
+}
+function comboTap(b) {
+  if (!comboFirst) { comboFirst = b; b.classList.add('sel'); sfx.tap(); return; }
+  if (comboFirst === b) { b.classList.remove('sel'); comboFirst = null; return; }
+  tryCombine(comboFirst, b);
+}
+function tryCombine(a, b) {
+  if (state !== 'choose' || !stage.combo) return false;
+  const out = pzCombine(a.dataset.tool, b.dataset.tool);
+  setComboMode(false);
+  if (!out) {
+    for (const x of [a, b]) { x.classList.remove('nope'); void x.offsetWidth; x.classList.add('nope'); }
+    sfx.hit(); buzz(30); say(t('combo.nope'));
+    return false;
+  }
+  // the second card melts into the first, which becomes the new item
+  b.remove();
+  a.dataset.tool = out;
+  a.innerHTML = toolSvg(out);
+  a.classList.remove('made'); void a.offsetWidth; a.classList.add('made');
+  sfx.pop(); buzz(15); say(t('combo.made'));
+  const r = a.getBoundingClientRect(), k = uiScale();
+  sparkleAt((r.left + r.width / 2) / k, (r.top + r.height / 2) / k);
+  track('combine', { out, hazard: stage.hazard });
+  return true;
+}
+function sparkleAt(x, y) {
+  for (let i = 0; i < 8; i++) {
+    const s = document.createElement('i');
+    s.className = 'spark';
+    s.style.left = x + 'px'; s.style.top = y + 'px';
+    s.style.setProperty('--a', i * 45 + 'deg');
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 600);
+  }
+}
+// Drag a card: onto another card to combine, or onto a danger panel to plan. Taps still work as taps.
+function enableDrag(b) {
+  b.addEventListener('pointerdown', (e) => {
+    if (!((state === 'choose' && stage && stage.combo) || state === 'plan') || paused) return;
+    const sx = e.clientX, sy = e.clientY;
+    let ghost = null;
+    const move = (ev) => {
+      if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 14) {
+        ghost = document.createElement('div');
+        ghost.className = 'drag-ghost';
+        ghost.innerHTML = toolSvg(b.dataset.tool, 70);
+        document.body.appendChild(ghost);
+        b.classList.add('dragging');
+      }
+      if (ghost) { const k = uiScale(); ghost.style.left = ev.clientX / k + 'px'; ghost.style.top = ev.clientY / k + 'px'; }
+    };
+    const up = (ev) => {
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
+      if (!ghost) return;
+      ghost.remove(); b.classList.remove('dragging');
+      lastDrag = performance.now();
+      const tgt = document.elementFromPoint(ev.clientX, ev.clientY);
+      if (!tgt) return;
+      if (state === 'plan') { const p = tgt.closest('[data-panel]'); if (p) assign(Number(p.dataset.panel), b.dataset.tool); return; }
+      const other = tgt.closest('.choice');
+      if (other && other !== b && other.parentNode === $('choices')) tryCombine(b, other);
+    };
+    addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  });
+}
+on2('btn-combo', () => { if (state !== 'choose' || !stage.combo) return; sfx.tap(); setComboMode(!comboMode); });
+
+// ---------------------------------------------------------------- inventory puzzle: plan, then GO
+// Three small danger panels across the scene and four cards. Tap a card, then a panel (or drag it there).
+let planSel = null;
+function buildPlan() {
+  state = 'plan';
+  stage = { hazard: level.stages[0].hazard, time: level.planTime * timeMult(), plan: true };
+  sceneG.innerHTML = '';
+  fxG.innerHTML = '';
+  parts.length = 0;
+  decor = null;
+  hero = null;
+  planSel = null;
+  stageT = 0;
+  const layer = g({});
+  layer.innerHTML = `<rect width="400" height="520" fill="#ffe9d6"/><path d="${Array.from({ length: 14 }, (_, i) => `M${i * 32 - 60} 520 L${i * 32 + 140} 0`).join(' ')}" stroke="#ffdcc0" stroke-width="10"/>`;
+  sceneG.appendChild(layer);
+  const W = 92, PH = 120, Y = 136;
+  level.stages.forEach((st, i) => {
+    const x = 56 + i * 98;
+    const hz = HAZARDS[st.hazard];
+    const pg = g({ class: 'panel', 'data-panel': i });
+    const sv = el('svg', { x, y: Y, width: W, height: PH, viewBox: '0 0 400 520', preserveAspectRatio: 'xMidYMid slice' });
+    const inner = g({});
+    inner.innerHTML = hz.bg();
+    sv.appendChild(inner);
+    const mh = makeHero();
+    inner.appendChild(mh);
+    const mctx = { layer: inner, hero: mh, T: () => Promise.resolve(), wait: () => Promise.resolve(), sfx, tool: () => g({}), puff() {}, say() {}, t: () => 2, step: 0 };
+    try { hz.setup(mctx); if (hz.idle) hz.idle(mctx, 2.5); } catch (e) { /* a still frame is enough */ }
+    pg.appendChild(sv);
+    pg.insertAdjacentHTML('beforeend', `<rect x="${x}" y="${Y}" width="${W}" height="${PH}" rx="10" fill="none" stroke="#2b2140" stroke-width="5"/>
+      <circle cx="${x + 14}" cy="${Y + 14}" r="12" fill="#ffbe2e" stroke="#2b2140" stroke-width="3"/><text x="${x + 14}" y="${Y + 20}" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="17" fill="#2b2140">${i + 1}</text>
+      <path d="M${x + W / 2} ${Y + PH + 4} v14" stroke="#2b2140" stroke-width="4"/>
+      <rect class="pslot" x="${x + W / 2 - 34}" y="${Y + PH + 18}" width="68" height="68" rx="16" fill="#fff7ef" stroke="#2b2140" stroke-width="4" stroke-dasharray="8 6"/>
+      <g class="slot-item"></g>`);
+    pg.addEventListener('click', () => onPanel(i));
+    layer.appendChild(pg);
+  });
+  layer.insertAdjacentHTML('beforeend', `<text x="200" y="${Y + PH + 120}" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="20" fill="#5d5172">${t('inv.rule')}</text>`);
+  ctx = makeCtx(layer);
+  levelChip();
+  pathStrip();
+  const box = $('choices');
+  box.innerHTML = '';
+  box.classList.remove('combo');
+  level.items.forEach((id) => enableDrag(choiceCard(id, box, (b) => selectItem(b))));
+  $('timer').style.visibility = '';
+  $('timer').classList.remove('low');
+  $('btn-time').classList.remove('used');
+  $('prow').hidden = false;
+  $('btn-combo').hidden = true;
+  $('btn-go').hidden = false;
+  $('prow-txt').textContent = t('inv.hint');
+  level.plan = [null, null, null];
+  renderPlan();
+}
+function selectItem(b) {
+  if (state !== 'plan') return;
+  sfx.tap();
+  if (planSel === b) { b.classList.remove('sel'); planSel = null; return; }
+  if (planSel) planSel.classList.remove('sel');
+  planSel = b; b.classList.add('sel');
+}
+function onPanel(i) {
+  if (state !== 'plan' || paused) return;
+  if (planSel) { assign(i, planSel.dataset.tool); return; }
+  if (level.plan[i]) { level.plan[i] = null; sfx.tap(); renderPlan(); }
+}
+function assign(i, item) {
+  if (state !== 'plan') return;
+  for (let k = 0; k < 3; k++) if (level.plan[k] === item) level.plan[k] = null;
+  level.plan[i] = item;
+  if (planSel) planSel.classList.remove('sel');
+  planSel = null;
+  sfx.pop(); buzz(10);
+  renderPlan();
+}
+function renderPlan() {
+  const panels = sceneG.querySelectorAll('.panel');
+  panels.forEach((p, i) => {
+    const it = level.plan[i];
+    const slot = p.querySelector('.pslot');
+    const x = Number(slot.getAttribute('x')) + 34, y = Number(slot.getAttribute('y')) + 34;
+    slot.setAttribute('stroke-dasharray', it ? 'none' : '8 6');
+    slot.setAttribute('fill', it ? '#fff2b8' : '#fff7ef');
+    p.querySelector('.slot-item').innerHTML = it ? `<g transform="translate(${x} ${y}) scale(0.56) translate(-50 -50)">${TOOLS[it]}</g>` : '';
+  });
+  for (const b of $('choices').children) {
+    const k = level.plan.indexOf(b.dataset.tool);
+    b.classList.toggle('used', k >= 0);
+    let tag = b.querySelector('.slotno');
+    if (k >= 0) { if (!tag) { tag = document.createElement('span'); tag.className = 'slotno'; b.appendChild(tag); } tag.textContent = k + 1; } else if (tag) tag.remove();
+  }
+  $('btn-go').disabled = level.plan.some((x) => !x);
+}
+function startRun() {
+  if (state !== 'plan' || level.plan.some((x) => !x)) return;
+  sfx.tap();
+  run.fracs.push(Math.max(0, 1 - stageT / stage.time));
+  level.running = true;
+  level.stages.forEach((st, i) => { st.options = [level.plan[i]]; });
+  stageIdx = 0;
+  $('prow').hidden = true;
+  track('plan_go', { level: level.n });
+  buildStage();
+}
+on2('btn-go', () => startRun());
+async function planTimeUp() {
+  if (state !== 'plan') return;
+  state = 'acting';
+  const my = gen;
+  level.running = true;
+  stageIdx = 0;
+  level.stages[0].options = [];
+  buildStage(true);
+  state = 'acting';
+  $('prow').hidden = true;
+  const hz = HAZARDS[stage.hazard];
+  say(t('tooslow'));
+  await hz.fails[Object.values(hz.wrong)[0]].call(hz, ctx);
+  if (my !== gen) return;
+  lost('time');
 }
 
 // Mid-stage twists: the hidden card shows itself, or two cards trade places.
@@ -504,11 +912,13 @@ function runTwist() {
 
 async function pick(id, btn) {
   if (state !== 'choose' || (introAd && !btn.dataset.auto)) return;
+  if (comboMode && stage.combo) { comboTap(btn); return; }
   $('danger').setAttribute('opacity', 0);
   unlockAudio();
   state = 'acting';
   const my = gen;
   const hz = HAZARDS[stage.hazard];
+  const res = judge(stage, id, level.flags || {});
   for (const b of $('choices').children) { b.disabled = true; if (b !== btn) b.classList.add('dim'); }
   btn.classList.add('picked');
   sfx.tap();
@@ -519,11 +929,28 @@ async function pick(id, btn) {
   await T(0.35, (k) => place(flying, 200 + (hx + 40 - 200) * ease(k), 560 + (hy - 130 - 560) * ease(k) - Math.sin(k * Math.PI) * 40, k * 360, 0.5 + k * 0.1));
   flying.remove();
   if (my !== gen) return;
-  btn.classList.add(id === hz.correct ? 'right' : 'wrong');
-  if (id === hz.correct) {
+  btn.classList.add(res.ok ? 'right' : 'wrong');
+  if (res.ok) {
+    // chains use the item up and remember what it did
+    if (level.kind === 'chain') level.bag = level.bag.filter((x) => x !== id);
+    if (res.sets) level.flags[res.sets] = 1;
+    if (!res.last) {
+      // first of two steps: the partial rescue, then the next choice with the cards that are left
+      await res.run(ctx);
+      if (my !== gen) return;
+      stage.step++;
+      ctx.step = stage.step;
+      btn.remove();
+      for (const b of $('choices').children) { b.disabled = false; b.classList.remove('dim'); }
+      stageT = Math.max(0, stageT - stage.time * 0.3);
+      say(t('two.more'));
+      sfx.coin();
+      state = 'choose';
+      return;
+    }
     save.st.saves++;
-    run.fracs.push(Math.max(0, 1 - stageT / stage.time));
-    await hz.win(ctx);
+    if (!(level.kind === 'inv' && level.running)) run.fracs.push(Math.max(0, 1 - stageT / stage.time));
+    await res.run(ctx);
     if (my !== gen) return;
     setFace(hero, 'happy');
     setArms(hero, 'up');
@@ -533,7 +960,7 @@ async function pick(id, btn) {
     }
     sfx.win();
     confetti(30);
-    stamp(hz.trick ? t('trick.saved') : t('saved'), true);
+    stamp(hz.trick || stage.clue ? t('trick.saved') : t('saved'), true);
     await T(1.1, (k) => setArms(hero, 'up', Math.sin(k * Math.PI * 6) * 14));
     if (my !== gen) return;
     $('stamp').hidden = true;
@@ -546,17 +973,17 @@ async function pick(id, btn) {
     if (stageIdx < level.stages.length) buildStage();
     else won();
   } else {
-    const type = hz.wrong[id] || Object.values(hz.wrong)[0];
-    const key = stage.hazard + ':' + id;
-    const fresh = !introAd && !save.album[key] && ENDINGS.some((e) => e.key === key);
+    const key = albumKey(res.sid, stage.hazard, id);
+    const fresh = !introAd && !!key && !save.album[key];
     if (fresh) { save.album[key] = 1; save.coins += albumCoins(); writeSave(); }
     save.st.fails++;
     save.st.failBy[stage.hazard] = (save.st.failBy[stage.hazard] || 0) + 1;
     writeSave();
     buzz(60);
-    await hz.fails[type].call(hz, ctx);
+    if (level.kind) track('puzzle_fail', { kind: level.kind, hazard: res.sid, tool: id });
+    await res.run(ctx);
     if (my !== gen) return;
-    lost(type, fresh, id);
+    lost(res.type, fresh, id, res.sid);
   }
 }
 
@@ -616,7 +1043,7 @@ function stamp(text, good) {
   s.style.animation = '';
 }
 
-async function lost(type, fresh = false, tool = '') {
+async function lost(type, fresh = false, tool = '', sid = '') {
   if (level.mode === 'level' && level.n > 0 && !introAd) { save.streak = 0; writeSave(); }
   buzz([90, 60, 90]);
   state = 'lost';
@@ -633,7 +1060,7 @@ async function lost(type, fresh = false, tool = '') {
     showScreen('screen-intro');
     return;
   }
-  $('lost-line').textContent = (tool && joke(stage.hazard, tool, getLang())) || t('fail.' + type);
+  $('lost-line').textContent = (tool && joke(sid || stage.hazard, tool, getLang())) || t('fail.' + type);
   lastShare = { kind: 'fail', title: $('lost-line').textContent, line: level.mode === 'endless' ? t('endless.score', { n: level.score, b: save.endlessBest }) : t('sh.dare') };
   $('btn-lb-lost').hidden = level.mode !== 'endless';
   $('btn-ch-send').hidden = level.mode !== 'endless' || level.score < 1;
@@ -769,10 +1196,12 @@ async function startIntro() {
 function levelChip() {
   if (!level) return;
   let txt = introAd ? t('intro.hud') : level.mode === 'endless' ? `${t('endless')} · ${level.score}${level.target ? ' / ' + level.target : ''}` : level.mode === 'daily' ? t('daily.ch') : level.mode === 'bonus' ? t('bonus') : level.boss ? 'BOSS' : level.n === 0 ? t('intro.real') : t('level', { n: level.n });
-  if (level.stages.length > 1 && level.mode !== 'endless') txt += ' · ' + t('stage', { a: stageIdx + 1, b: level.stages.length });
+  // puzzle levels: the kind's icon and the number, short enough to leave room for the HUD buttons
+  if (level.kind && level.n > 0) txt = PZ_ICON[level.kind] + ' ' + level.n;
+  if (level.stages.length > 1 && level.mode !== 'endless' && !(level.kind === 'inv' && !level.running)) txt += ' · ' + t('stage', { a: stageIdx + 1, b: level.stages.length });
   $('hud-level').textContent = txt;
 }
-const screens = ['screen-challenge', 'screen-wheel', 'screen-chest', 'screen-album', 'screen-ach', 'screen-home', 'screen-won', 'screen-lost', 'screen-intro', 'screen-shop', 'screen-hintbuy', 'screen-settings', 'screen-daily'];
+const screens = ['screen-teach', 'screen-challenge', 'screen-wheel', 'screen-chest', 'screen-album', 'screen-ach', 'screen-home', 'screen-won', 'screen-lost', 'screen-intro', 'screen-shop', 'screen-hintbuy', 'screen-settings', 'screen-daily'];
 function showScreen(id) { for (const s of screens) $(s).hidden = s !== id; }
 function updateCoins() { $('hud-coins').textContent = save.coins; $('home-coins').textContent = save.coins; }
 function updateHints() { $('hint-count').textContent = eventId === 'freehint' ? '∞' : save.hints > 0 ? save.hints : '+'; }
@@ -821,10 +1250,10 @@ function renderAlbum() {
   $('album-count').textContent = `${got}/${ENDINGS.length}`;
   $('album-bar').style.width = (got / ENDINGS.length) * 100 + '%';
   $('album-joke').textContent = t('album.help');
-  $('album-list').innerHTML = HAZARD_IDS.map((h) => `<div class="alb-row"><span class="hz" style="font-size:28px;line-height:34px;text-align:center">${HZ_ICON[h] || '?'}</span><div class="slots">${ENDINGS.filter((e) => e.h === h).map((e) => `<button type="button" class="slot ${save.album[e.key] ? 'got' : ''}" data-key="${e.key}">${save.album[e.key] ? toolSvg(e.tool, 30) : '?'}</button>`).join('')}</div></div>`).join('');
+  $('album-list').innerHTML = HAZARD_IDS.map((h) => `<div class="alb-row"><span class="hz" style="font-size:28px;line-height:34px;text-align:center">${HZ_ICON[h] || '?'}</span><div class="slots">${ENDINGS.filter((e) => e.h === h).map((e) => `<button type="button" class="slot ${save.album[e.key] ? 'got' : ''}${e.pz ? ' pz' : ''}" data-key="${e.key}">${save.album[e.key] ? toolSvg(e.tool, 30) : '?'}</button>`).join('')}</div></div>`).join('');
   for (const b of $('album-list').querySelectorAll('.slot')) b.addEventListener('click', () => {
     const e = ENDINGS.find((x) => x.key === b.dataset.key);
-    $('album-joke').textContent = save.album[e.key] ? joke(e.h, e.tool, getLang()) : t('album.unknown');
+    $('album-joke').textContent = save.album[e.key] ? joke(e.sid || e.h, e.tool, getLang()) : t('album.unknown');
     sfx.tap();
   });
 }
@@ -894,8 +1323,9 @@ function renderMap(shift = 0) {
     const cls = n < cur ? 'done' : n === cur ? 'now' : 'lock';
     const st = save.stars[n] || 0;
     const multi = levelSpec(n).stages.length;
-    const chest = n % 10 === 0 && !save.chests[n] ? '<span class="chest">🎁</span>' : isBoss(n) ? '<span class="chest">👑</span>' : '';
-    html += `<button type="button" class="node ${cls}" data-n="${n}" ${n > cur ? 'disabled' : ''}>${chest || (multi > 1 ? `<span class="boss">×${multi}</span>` : '')}<b>${n}</b><i>${n < cur ? '★'.repeat(st) + '☆'.repeat(3 - st) : ''}</i></button>`;
+    const pz = puzzleKind(n);
+    const chest = n % 10 === 0 && !save.chests[n] ? '<span class="chest">🎁</span>' : isBoss(n) ? '<span class="chest">👑</span>' : pz ? `<span class="chest">${PZ_ICON[pz]}</span>` : '';
+    html += `<button type="button" class="node ${cls}${pz ? ' pz' : ''}" data-n="${n}" ${n > cur ? 'disabled' : ''}>${chest || (multi > 1 ? `<span class="boss">×${multi}</span>` : '')}<b>${n}</b><i>${n < cur ? '★'.repeat(st) + '☆'.repeat(3 - st) : ''}</i></button>`;
   }
   html += `<button type="button" class="map-arrow" data-d="5" ${start + 4 >= cur ? 'disabled' : ''} aria-label="Next">›</button>`;
   $('map').innerHTML = html;
@@ -1233,7 +1663,7 @@ on('btn-wheel', () => { sfx.tap(); drawWheel(); renderWheel(); showScreen('scree
 on('btn-spin', () => spinWheel());
 on('btn-wheel-close', () => { if (spinning) return; sfx.tap(); goHome(); });
 on('btn-hint', () => {
-  if (state !== 'choose' || introAd) return;
+  if (!(state === 'choose' || state === 'plan') || introAd) return;
   if (save.hints <= 0 && eventId !== 'freehint') {
     paused = true;
     $('btn-hb-buy').textContent = t('shop.buyhints', { p: HINT_PACK });
@@ -1243,7 +1673,7 @@ on('btn-hint', () => {
   useHint();
 });
 function useTime() {
-  if (state !== 'choose' || introAd || level.mode === 'bonus' || stage.timeUsed) return;
+  if (!(state === 'choose' || state === 'plan') || introAd || level.mode === 'bonus' || stage.timeUsed || (level.kind === 'inv' && level.running)) return;
   if (save.hints <= 0 && eventId !== 'freehint') {
     paused = true;
     $('btn-hb-buy').textContent = t('shop.buyhints', { p: HINT_PACK });
@@ -1259,15 +1689,42 @@ function useTime() {
   say(t('joker.time'));
   $('btn-time').classList.add('used');
 }
+// the cards a hint lights up: the next step, the solution's item in a chain, a recipe's two halves…
+function hintCards() {
+  const cards = [...$('choices').children];
+  const by = (id) => cards.filter((x) => x.dataset.tool === id);
+  if (stage.combo) {
+    const made = by(stage.correct);
+    if (made.length) return made;
+    const r = RECIPES.find((x) => x[2] === stage.correct);
+    return [...by(r[0]), ...by(r[1])];
+  }
+  if (level.kind === 'chain') {
+    const sol = level.solution && level.solution[stageIdx];
+    if (sol && level.bag.includes(sol) && pzRule(stage.hazard, sol, level.flags)) return by(sol);
+  }
+  return by(pzWanted(stage, level.flags || {}));
+}
 function useHint() {
-  if (state !== 'choose' || (save.hints <= 0 && eventId !== 'freehint')) return;
-  const b = [...$('choices').children].find((x) => x.dataset.tool === HAZARDS[stage.hazard].correct);
-  if (!b || b.classList.contains('hint')) return;
+  if (!(state === 'choose' || state === 'plan') || (save.hints <= 0 && eventId !== 'freehint')) return;
+  if (level.kind === 'inv' && level.running) return; // the plan is already playing out
+  if (state === 'plan') {
+    // inventory: puts one item of the plan in place
+    const i = level.plan.findIndex((x, k) => x !== level.solution[k]);
+    if (i < 0) return;
+    if (eventId !== 'freehint') save.hints--;
+    run.hint = true;
+    writeSave(); updateHints();
+    assign(i, level.solution[i]);
+    return;
+  }
+  const bs = hintCards();
+  if (!bs.length || bs.every((b) => b.classList.contains('hint'))) return;
   if (eventId !== 'freehint') save.hints--;
   run.hint = true;
   writeSave();
   updateHints();
-  b.classList.add('hint');
+  bs.forEach((b) => b.classList.add('hint'));
   sfx.tap();
 }
 on('btn-lang', () => { setLang(nextLang()); sfx.tap(); renderSettings(); });
@@ -1361,6 +1818,9 @@ on('btn-revive', async () => {
   tweens.length = 0;
   showScreen(null);
   $('stamp').hidden = true;
+  // a chain stage starts again with the bag it had; an inventory puzzle goes back to planning
+  if (level.kind === 'chain' && stage.bagStart) { level.bag = stage.bagStart.slice(); level.flags = { ...stage.flagsStart }; }
+  if (level.kind === 'inv') { level.running = false; stageIdx = 0; }
   buildStage();
   track('revive', { level: level.n });
 });
@@ -1379,10 +1839,22 @@ function frame(now) {
     tw.fn(k);
     if (k >= 1) { tweens.splice(i, 1); tw.done(); }
   }
+  if (state === 'plan' && !paused) {
+    stageT += dt;
+    const left = Math.max(0, 1 - stageT / stage.time);
+    $('timer').firstElementChild.style.transform = `scaleX(${left})`;
+    $('timer').classList.toggle('low', left < 0.3);
+    if (left <= 0) planTimeUp();
+  }
   if (stage && !paused && (state === 'choose' || state === 'home')) {
     stageT += dt;
     const hz = HAZARDS[stage.hazard];
-    if (hz.idle && ctx) hz.idle(ctx, state === 'home' ? Math.min(stageT, 3) : stageT);
+    const v = stage.v && VARIANTS[stage.v];
+    const tt = state === 'home' ? Math.min(stageT, 3) : stageT + (stage.t0 || 0);
+    if (ctx) {
+      if (v && v.idle) v.idle.call(hz, ctx, tt);
+      else { if (hz.idle) hz.idle(ctx, tt); if (v && v.more) v.more.call(hz, ctx, tt); }
+    }
     if (state === 'choose') {
       const left = Math.max(0, 1 - stageT / stage.time);
       $('timer').firstElementChild.style.transform = `scaleX(${left})`;
@@ -1448,8 +1920,10 @@ async function timeUp() {
   for (const b of $('choices').children) { b.disabled = true; b.classList.add('dim'); }
   const hz = HAZARDS[stage.hazard];
   const firstWrong = Object.values(hz.wrong)[0];
+  const v = stage.v && VARIANTS[stage.v];
+  setComboMode(false);
   say(t('tooslow'));
-  await hz.fails[firstWrong].call(hz, ctx);
+  await (v && v.failAll ? v.failAll : hz.fails[firstWrong]).call(hz, ctx);
   if (my !== gen) return;
   lost('time');
 }
@@ -1496,6 +1970,20 @@ runOpening({
   if (onboarded && state === 'home') startIntro();
 });
 
+// the right move for whatever is on screen (test bot): plan + GO, combine + use, the next step…
+function pickRight() {
+  if (state === 'plan') { level.solution.forEach((it, i) => assign(i, it)); startRun(); return; }
+  if (state !== 'choose') return;
+  const cards = [...$('choices').children];
+  if (stage.combo && !cards.some((b) => b.dataset.tool === stage.correct)) {
+    const r = RECIPES.find((x) => x[2] === stage.correct);
+    const a = cards.find((b) => b.dataset.tool === r[0]), b = cards.find((x) => x.dataset.tool === r[1]);
+    if (a && b) tryCombine(a, b);
+  }
+  const want = level.kind === 'chain' && level.solution ? level.solution[stageIdx] : pzWanted(stage, level.flags || {});
+  const b = [...$('choices').children].find((x) => x.dataset.tool === want);
+  if (b) pick(want, b);
+}
 // test hooks (headless bot)
 window.__choices = {
   get state() { return state; },
@@ -1516,11 +2004,24 @@ window.__choices = {
   daily: () => startLevel(-2, dailySpec()),
   endings: ENDINGS,
   spec: (n) => levelSpec(n),
-  pickCorrect: () => { const b = [...$('choices').children].find((x) => x.dataset.tool === HAZARDS[stage.hazard].correct); b && pick(b.dataset.tool, b); },
+  pickCorrect: () => pickRight(),
   hazardIds: HAZARD_IDS,
   optionsFor: (id) => [HAZARDS[id].correct, ...Object.keys(HAZARDS[id].wrong)],
   pickTool: (id) => { const b = [...$('choices').children].find((x) => x.dataset.tool === id); b && pick(id, b); },
-  pickWrong: () => { const b = [...$('choices').children].find((x) => x.dataset.tool !== HAZARDS[stage.hazard].correct); b && pick(b.dataset.tool, b); },
+  pickWrong: () => { const w = pzWanted(stage, level.flags || {}); const b = [...$('choices').children].find((x) => x.dataset.tool !== w); b && pick(b.dataset.tool, b); },
+  deck: () => [...$('choices').children].map((b) => b.dataset.tool),
+  combine: (a, b) => { const cs = [...$('choices').children]; const x = cs.find((c) => c.dataset.tool === a), y = cs.find((c) => c.dataset.tool === b && c !== x); return !!(x && y) && tryCombine(x, y); },
+  assign: (i, item) => assign(i, item),
+  go: () => startRun(),
+  kind: (n) => puzzleKind(n),
+  puzzle: (n) => puzzleAt(n),
+  classic: (n) => classicIndex(n),
+  pz: { VARIANTS, CHAINS, INV_SETS, COMBOS, RECIPES, PZ_LEVELS, solveChain, solveInv, rule: pzRule, combine: pzCombine },
+  play: (n, spec) => startLevel(n, spec),
+  clueStage: (e) => { startLevel(1, { n: 1, mode: 'level', kind: 'clue', stages: [clueStage(e, rng(5), 3, 99)] }); },
+  twoStage: (e) => { startLevel(1, { n: 1, mode: 'level', kind: 'two', stages: [twoStage(e, rng(5), 4, 99)] }); },
+  flags: () => level && level.flags,
+  teachSeen: (v) => { save.pzSeen = v ? { clue: 1, two: 1, combo: 1, chain: 1, inv: 1 } : {}; writeSave(); },
   cards,
   setSeason: (v) => { window.__season = v; goHome(); },
   showHazard: (id) => { gen++; $('bottom').hidden = false; $('stamp').hidden = true; fxG.innerHTML = ''; level = { n: 1, stages: [{ hazard: id, options: [HAZARDS[id].correct, ...Object.keys(HAZARDS[id].wrong)], time: 99 }] }; stageIdx = 0; showScreen(null); $('hud').hidden = false; buildStage(); },

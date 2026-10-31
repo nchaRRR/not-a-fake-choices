@@ -347,6 +347,42 @@
   html.xmas body:has(#screen-home[hidden]) #snow { display: none; }
   .xmas-chip { background: #e8453c !important; color: #fff !important; }
   @media (prefers-reduced-motion: reduce) { #snow i, #garland-slot .bulb { animation: none; } }
+
+  /* ---------- puzzle levels: combine, plan (inventory), path strip, teaching card ---------- */
+  #prow { flex: none; display: flex; align-items: center; gap: 8px; height: 30px; margin-bottom: -2px; }
+  #prow-txt { flex: 1; min-width: 0; font-weight: 800; font-size: 13px; line-height: 1.1; color: var(--ink-soft); }
+  .pbtn { flex: none; font: 800 16px/1 var(--font-display); color: var(--ink); background: #fff; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); padding: 5px 12px 3px; cursor: pointer; }
+  .pbtn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
+  .pbtn.on { background: var(--lilac); color: #fff; }
+  .pbtn.go { background: var(--green); color: #fff; font-size: 18px; padding-inline: 18px; }
+  .pbtn:disabled { opacity: 0.45; cursor: default; }
+  #choices .choice { touch-action: none; } /* cards can be dragged (combine, plan); taps still click */
+  #choices.combining .choice { border-style: dashed; }
+  .choice.sel { background: #ece6ff; border-color: var(--lilac); transform: translateY(-5px); box-shadow: 0 9px 0 var(--ink); }
+  .choice.nope { animation: cardBad 0.4s ease; }
+  .choice.made { background: #fff2b8; }
+  .choice.made svg { animation: newtag 0.45s cubic-bezier(.2,1.6,.4,1) both; }
+  .choice.dragging { opacity: 0.4; }
+  .choice.used { background: #f1ebe4; }
+  .choice.used svg { opacity: 0.55; }
+  .choice .slotno { position: absolute; top: 4px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); font: 800 15px/22px var(--font-display); color: var(--ink); }
+  .drag-ghost { position: fixed; z-index: 50; pointer-events: none; width: 84px; height: 84px; margin: -60px 0 0 -42px; display: grid; place-items: center; background: #fff; border: 4px solid var(--ink); border-radius: 20px; box-shadow: 0 8px 0 rgba(43,33,64,0.35); transform: rotate(-6deg); }
+  .spark { position: fixed; z-index: 40; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); pointer-events: none; animation: sparkOut 0.55s ease-out forwards; }
+  @keyframes sparkOut { to { transform: rotate(var(--a)) translateY(-60px) scale(0.3); opacity: 0; } }
+  #stage .panel { cursor: pointer; }
+  #taunt .path { display: inline-flex; align-items: center; gap: 4px; font-size: 24px; }
+  #taunt .path b { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,0.75); border: 3px solid transparent; }
+  #taunt .path b.now { border-color: var(--gold); background: #fff; transform: scale(1.12); }
+  #taunt .path b.done { opacity: 0.45; }
+  #taunt .path i { font-style: normal; color: var(--ink-soft); }
+  #teach-art { display: flex; align-items: center; justify-content: center; gap: 3px; flex-wrap: nowrap; font: 800 28px var(--font-display); color: var(--ink); background: #fff; border: 3px solid var(--ink); border-radius: 16px; padding: 8px 6px; }
+  #teach-art svg { width: 42px; height: 42px; flex: none; }
+  #teach-art span { font-size: 28px; line-height: 1; }
+  #teach-art em { font-style: normal; font-size: 18px; width: 24px; height: 24px; border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); display: grid; place-items: center; }
+  #screen-teach p { margin: 0; font-weight: 700; font-size: 17px; line-height: 1.3; }
+  .slot.pz { border-color: var(--lilac); }
+  .slot.pz:not(.got) { background: #e6defc; }
+  .node.pz b { border-style: dashed; }
 </style>
 
 <svg id="stage" viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene">
@@ -359,6 +395,7 @@
 
 <div id="bottom">
   <div id="timer"><i></i></div>
+  <div id="prow" hidden><span id="prow-txt"></span><button type="button" class="pbtn" id="btn-combo">🔗 <span data-i18n="combo.btn">Combine</span></button><button type="button" class="pbtn go" id="btn-go" data-i18n="inv.go">GO!</button></div>
   <div id="choices"></div>
 </div>
 
@@ -405,6 +442,16 @@
       <button class="tile" id="btn-cards" type="button"><span>🃏</span><em data-i18n="tile.cards" style="font-style:normal">Cards</em><span class="badge" id="cards-badge" hidden>!</span></button>
       <button class="tile" id="btn-ach" type="button"><span>🏆</span><em data-i18n="tile.ach" style="font-style:normal">Awards</em><span class="badge" id="ach-badge" hidden>!</span></button>
     </div>
+  </div>
+</section>
+
+<section id="screen-teach" class="screen screen-dim" hidden>
+  <div class="card">
+    <span class="new-tag" data-i18n="pz.new">New puzzle!</span>
+    <h2 id="teach-title"></h2>
+    <div id="teach-art" aria-hidden="true"></div>
+    <p id="teach-body"></p>
+    <button class="btn btn-big btn-green" id="btn-teach" type="button" data-i18n="pz.ok">Got it!</button>
   </div>
 </section>
 

@@ -256,11 +256,150 @@ const J = {
   },
 };
 
+// Endings only puzzle levels reach: clue states (danger~clue), wrong orders (danger~two-step scenes),
+// combined items and the items chains and inventory puzzles hand out.
+const PZ = {
+  'bear~asleep': {
+    honey: ["He woke the bear up to give it breakfast. Thoughtful.", "Ayıyı kahvaltı vermek için uyandırdı. Ne düşünceli."],
+  },
+  'ghost~cry': {
+    vacuum: ["He vacuumed a crying ghost. It cried louder.", "Ağlayan hayaleti süpürdü. Daha çok ağladı."],
+  },
+  'lion~thorn': {
+    yarn: ["The lion had a thorn in its paw. It did not want to play.", "Aslanın patisinde diken vardı. Oyun oynayacak hali yoktu."],
+  },
+  'zombie~vegan': {
+    brain: ["This zombie is vegan. He was offended. Then hungry.", "Bu zombi vegan. Önce alındı. Sonra acıktı."],
+  },
+  'mice~robot': {
+    cat: ["Robot mice. The cat broke a tooth.", "Robot fareler. Kedinin dişi kırıldı."],
+  },
+  'alien~peace': {
+    mirror: ["They waved a white flag. He blinded them. Now it's personal.", "Beyaz bayrak salladılar. O gözlerini kamaştırdı. Artık mesele kişisel."],
+  },
+  'meteor~tiny': {
+    rocket: ["A rocket for a pebble. He's in orbit. The pebble is fine.", "Çakıl taşına roket. Kendisi yörüngede. Çakıl gayet iyi."],
+  },
+  'thief~bone': {
+    dog: ["The thief had a bone. The dog switched teams.", "Hırsızın elinde kemik vardı. Köpek taraf değiştirdi."],
+  },
+  bear: {
+    slippers: ["Tiptoeing past an awake bear. The bear noticed.", "Uyanık bir ayının yanından parmak ucunda geçti. Ayı fark etti."],
+  },
+  lion: {
+    tape: ["Nothing was wrong with the lion. Until the bandage.", "Aslanın hiçbir derdi yoktu. Ta ki yara bandını görene kadar."],
+  },
+  zombie: {
+    broccoli: ["This zombie is not vegan. Clearly.", "Bu zombi vegan değil. Belli oldu."],
+  },
+  mice: {
+    magnet: ["Real mice aren't made of metal. They tickled.", "Gerçek fareler metal değil. Gıdıkladılar."],
+  },
+  alien: {
+    flower: ["He offered a flower. They took the flower. And him.", "Çiçek uzattı. Çiçeği aldılar. Onu da."],
+    scissors: ["He tried to cut the beam. Beams don't cut.", "Işını kesmeye çalıştı. Işın kesilmez."],
+    garlic: ["Garlic is for vampires. Aliens think it's a snack.", "Sarımsak vampirler için. Uzaylılar atıştırmalık sanıyor."],
+  },
+  thief: {
+    whistle: ["He whistled. The thief whistled back.", "Düdük çaldı. Hırsız da ona çaldı."],
+    drumstick: ["He gave the thief a snack. The thief took it. And the bag.", "Hırsıza atıştırmalık verdi. Hırsız aldı. Çantayı da."],
+  },
+  'oxygen~tether': {
+    rope: ["He was pulled home safely. Without air, sadly.", "Onu güvenle istasyona çektiler. Ama havasız."],
+  },
+  'cold~ice': {
+    campfire: ["The ice melted, the water put out the fire, then it all froze again.", "Buz eridi, su ateşi söndürdü, sonra her şey yeniden dondu."],
+  },
+  'carsink~belt': {
+    hammer: ["Window broken. Seatbelt still on. Safety first, apparently.", "Cam kırıldı. Emniyet kemeri hâlâ takılı. Önce güvenlik, demek."],
+  },
+  'flood~tied': {
+    ring: ["The ring floated. He didn't. The rope saw to that.", "Simit yüzdü. O yüzemedi. Halat izin vermedi."],
+  },
+  'dragon~hungry': {
+    steak: ["He walked up to a dragon with a steak. Now there are two steaks.", "Elinde biftekle ejderhaya yürüdü. Artık iki biftek var."],
+  },
+  'mice~hole': {
+    tape: ["He sealed the hole. With all the mice inside. With him.", "Deliği kapattı. Bütün fareler içerideyken. Onunla birlikte."],
+  },
+  dino: {
+    umbrella: ["An umbrella off a cliff. It turned inside out. So did his day.", "Uçurumdan şemsiyeyle atladı. Şemsiye ters döndü. Günü de."],
+    fan: ["A fan can't fly. Neither can he.", "Vantilatör uçamaz. O da uçamaz."],
+    candle: ["A candle. For the dino's birthday dinner.", "Mum. Dinozorun doğum günü yemeği için."],
+    bottle: ["He threw a bottle at a T. rex. The T. rex had a drink. And a snack.", "T. rex'e şişe fırlattı. T. rex bir yudum aldı. Yanına da bir atıştırmalık."],
+    lantern: ["The lantern lit up the dinner table. He was the dinner.", "Fener yemek masasını aydınlattı. Yemek oydu."],
+  },
+  cold: {
+    candle: ["The wind blew the candle out. Then him.", "Rüzgâr mumu söndürdü. Sonra da onu."],
+    bottle: ["The water in the bottle froze. He's next.", "Şişedeki su dondu. Sıra onda."],
+    cooler: ["He built an air cooler. In a blizzard. Engineering.", "Kar fırtınasında soğutucu yaptı. Mühendislik."],
+  },
+  moon: {
+    rope: ["He held on to the rope. The rope held on to nothing.", "İpe tutundu. İp hiçbir şeye tutunmadı."],
+    magnet: ["The lander was too far for a magnet. Space is big.", "Uzay aracı mıknatıs için çok uzaktı. Uzay büyük."],
+    rocket: ["A rocket on the moon. He went back up. Way up.", "Ay'da roket. Yukarı çıktı. Hem de çok yukarı."],
+    jetboard: ["A rocket board in low gravity. Goodbye, moon.", "Düşük yer çekiminde roketli kaykay. Hoşça kal, Ay."],
+  },
+  avalanche: {
+    skateboard: ["Skateboard wheels in deep snow. They did not roll.", "Derin karda kaykay tekerleği. Dönmedi bile."],
+    rocket: ["A rocket in an avalanche. Now the avalanche is bigger.", "Çığın içinde roket. Çığ daha da büyüdü."],
+    glider: ["He glided gently. Right into the snow.", "Süzüle süzüle uçtu. Doğruca karın içine."],
+  },
+  desert: {
+    ice: ["The ice melted before he could lick it.", "Buz o yalayamadan eridi."],
+    fan: ["A fan in the desert. Hot air, but faster.", "Çölde vantilatör. Sıcak hava, ama daha hızlı."],
+    plank: ["He sat on a plank in the desert. Very relaxing. Very hot.", "Çölde tahtaya oturdu. Çok rahat. Çok sıcak."],
+    rope: ["A rope. For tying up the sun, maybe.", "Bir ip. Güneşi bağlamak için galiba."],
+    raft: ["A raft in the desert. He's waiting for the sea.", "Çölde sal. Denizin gelmesini bekliyor."],
+  },
+  flood: {
+    plank: ["One plank, no rope. It floated away without him.", "Tek tahta, ip yok. Tahta onsuz yüzüp gitti."],
+    rope: ["He tied himself to the furniture. It sank first.", "Kendini mobilyaya bağladı. Önce mobilya battı."],
+    magnet: ["A magnet in a flood. It found the drain. So did he.", "Selde mıknatıs. Gideri buldu. O da buldu."],
+    grabber: ["He grabbed the fridge with the magnet. The fridge went down. He followed.", "Mıknatısla buzdolabını yakaladı. Buzdolabı battı. O da peşinden."],
+  },
+  lava: {
+    scissors: ["Scissors against lava. The scissors melted first.", "Lava karşısında makas. Önce makas eridi."],
+    hammer: ["He hit the lava with a hammer. Splash. Hot splash.", "Lavaya çekiçle vurdu. Şap. Sıcak bir şap."],
+    extinguisher: ["Foam on lava. Lava doesn't care about foam.", "Lavaya köpük sıktı. Lav köpükten anlamaz."],
+  },
+  blackhole: {
+    plank: ["A plank against a black hole. Spaghetti, with a side of wood.", "Kara deliğe karşı tahta. Spagetti, yanında odun."],
+    surfboard: ["He surfed the black hole. One wave. The last one.", "Kara delikte sörf yaptı. Tek dalga. Son dalga."],
+  },
+  lightning: {
+    anchor: ["He held a metal anchor in a storm. The lightning loved it.", "Fırtınada metal çapa tuttu. Yıldırım bayıldı."],
+  },
+  'ghost~dark': {
+    vacuum: ["He cut the power. The vacuum needs power. Oops.", "Elektriği kesti. Süpürge elektrikle çalışır. Hay aksi."],
+  },
+  witch: {
+    scissors: ["He cut the witch's broom. She still had her magic.", "Cadının süpürgesini kesti. Büyüsü hâlâ yerindeydi."],
+    extinguisher: ["Foam isn't water. The witch stayed solid.", "Köpük su değil. Cadı erimedi."],
+  },
+  bomb: {
+    extinguisher: ["Foam everywhere except the fuse.", "Her yere köpük sıktı. Fitil hariç."],
+  },
+  fire: {
+    scissors: ["He cut the fire into smaller fires.", "Yangını küçük yangınlara böldü."],
+  },
+  piranha: {
+    rope: ["He threw a rope. The piranhas pulled the other end.", "İp attı. Piranalar öbür ucundan çekti."],
+    anchor: ["An anchor. To make sure he sinks faster.", "Çapa. Daha hızlı batsın diye."],
+  },
+  quicksand: {
+    surfboard: ["He tried to surf the quicksand. It's sand. No waves.", "Bataklıkta sörf yapmaya kalktı. Kum bu. Dalga yok."],
+  },
+};
+for (const [h, m] of Object.entries(PZ)) J[h] = { ...(J[h] || {}), ...m };
+
 const MORE = { es: esJ || {}, pt: ptJ || {}, de: deJ || {}, fr: frJ || {} };
+// hazard can be a puzzle scene like 'bear~asleep'; without its own line it falls back to the danger's
 export function joke(hazard, tool, lang) {
-  const j = J[hazard] && J[hazard][tool];
+  const key = J[hazard] && J[hazard][tool] ? hazard : hazard.split('~')[0];
+  const j = J[key] && J[key][tool];
   if (!j) return '';
   if (lang === 'tr') return j[1];
-  return (MORE[lang] && MORE[lang][`${hazard}.${tool}`]) || j[0];
+  return (MORE[lang] && MORE[lang][`${key}.${tool}`]) || j[0];
 }
 export const _J = J;
